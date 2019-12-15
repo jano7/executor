@@ -28,14 +28,14 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.Executor;
 
-public final class KeySynchronizedExecutor<Key> {
+public final class KeySequentialRunner<Key> {
 
     private final class KeyRunner {
 
         private final LinkedList<Runnable> runnables = new LinkedList<>();
         private boolean active = false;
 
-        public synchronized void execute(final Runnable runnable) {
+        public synchronized void execute(Runnable runnable) {
             if (active) {
                 runnables.addFirst(runnable);
             } else {
@@ -66,11 +66,11 @@ public final class KeySynchronizedExecutor<Key> {
     private final Executor underlyingExecutor;
     private final HashMap<Key, KeyRunner> keyRunners = new HashMap<>();
 
-    public KeySynchronizedExecutor(Executor underlyingExecutor) {
+    public KeySequentialRunner(Executor underlyingExecutor) {
         this.underlyingExecutor = underlyingExecutor;
     }
 
-    public synchronized void execute(Key key, Runnable runnable) {
+    public synchronized void run(Key key, Runnable runnable) {
         KeyRunner runner = keyRunners.get(key);
         if (runner == null) {
             scavengeInactiveRunners();
@@ -78,10 +78,6 @@ public final class KeySynchronizedExecutor<Key> {
             keyRunners.put(key, runner);
         }
         runner.execute(runnable);
-    }
-
-    public void execute(KeyRunnable<Key> runnable) {
-        execute(runnable.getKey(), runnable);
     }
 
     private void scavengeInactiveRunners() {

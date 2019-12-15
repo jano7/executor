@@ -23,34 +23,18 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
-import java.util.Objects;
+import java.util.concurrent.Executor;
 
-public class KeyRunnable<Key> implements Runnable {
+public final class KeySequentialExecutor implements Executor {
 
-    private final Key key;
+    private final KeySequentialRunner<Runnable> runner;
 
-    private final Runnable runnable;
-
-    public KeyRunnable(Key key, Runnable runnable) {
-        this.key = key;
-        this.runnable = runnable;
+    public KeySequentialExecutor(Executor underlyingExecutor) {
+        this.runner = new KeySequentialRunner<>(underlyingExecutor);
     }
 
     @Override
-    public final boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        KeyRunnable<?> that = (KeyRunnable<?>) o;
-        return Objects.equals(key, that.key);
-    }
-
-    @Override
-    public final int hashCode() {
-        return Objects.hashCode(key);
-    }
-
-    @Override
-    public final void run() {
-        runnable.run();
+    public void execute(Runnable runnable) {
+        runner.run(runnable, runnable);
     }
 }

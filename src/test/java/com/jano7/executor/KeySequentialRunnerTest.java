@@ -37,11 +37,11 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
 
-public class KeySynchronizedExecutorTest {
+public class KeySequentialRunnerTest {
 
     private static final int THREAD_COUNT = 10;
     private final ExecutorService underlyingExecutor = Executors.newFixedThreadPool(THREAD_COUNT);
-    private final KeySynchronizedExecutor<String> executor = new KeySynchronizedExecutor<>(underlyingExecutor);
+    private final KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
     private final Map<String, Long> threadIdMap = Collections.synchronizedMap(new HashMap<>());
 
     @After
@@ -55,20 +55,8 @@ public class KeySynchronizedExecutorTest {
         final CountDownLatch latch1 = new CountDownLatch(2);
         final CountDownLatch latch2 = new CountDownLatch(2);
 
-        executor.execute("sameKey", () -> run(latch1, threadIdMap, "t1"));
-
-        executor.execute(new KeyRunnable<String>() {
-
-            @Override
-            public String getKey() {
-                return "sameKey";
-            }
-
-            @Override
-            public void run() {
-                KeySynchronizedExecutorTest.run(latch2, threadIdMap, "t2");
-            }
-        });
+        runner.run("sameKey", () -> run(latch1, threadIdMap, "t1"));
+        runner.run("sameKey", () -> run(latch2, threadIdMap, "t2"));
 
         latch1.await(1, TimeUnit.SECONDS);
         latch1.countDown();
@@ -85,9 +73,9 @@ public class KeySynchronizedExecutorTest {
     public void performCommandsInParallel() throws InterruptedException {
         final CountDownLatch latch = new CountDownLatch(2);
 
-        executor.execute("key1", () -> run(latch, threadIdMap, "t1"));
+        runner.run("key1", () -> run(latch, threadIdMap, "t1"));
 
-        executor.execute("aDifferentKey", () -> run(latch, threadIdMap, "t2"));
+        runner.run("aDifferentKey", () -> run(latch, threadIdMap, "t2"));
 
         latch.await();
 
@@ -99,29 +87,29 @@ public class KeySynchronizedExecutorTest {
     @Test(timeout = 5000)
     public void noMemoryLeak() throws
             NoSuchFieldException, IllegalArgumentException, IllegalAccessException, InterruptedException {
-        Field keyRunners = KeySynchronizedExecutor.class.getDeclaredField("keyRunners");
+        Field keyRunners = KeySequentialRunner.class.getDeclaredField("keyRunners");
         keyRunners.setAccessible(true);
-        synchronized (executor) {
-            assertTrue(((Map<?, ?>) keyRunners.get(executor)).isEmpty());
+        synchronized (runner) {
+            assertTrue(((Map<?, ?>) keyRunners.get(runner)).isEmpty());
         }
 
         final CountDownLatch latch = new CountDownLatch(THREAD_COUNT / 2);
         for (int i = THREAD_COUNT / 2; i > 0; --i) {
-            executor.execute(Integer.toString(i), () -> run(latch, threadIdMap, "t"));
+            runner.run(Integer.toString(i), () -> run(latch, threadIdMap, "t"));
         }
 
         latch.await();
 
-        synchronized (executor) {
-            assertEquals(THREAD_COUNT / 2, ((Map<?, ?>) keyRunners.get(executor)).size());
+        synchronized (runner) {
+            assertEquals(THREAD_COUNT / 2, ((Map<?, ?>) keyRunners.get(runner)).size());
         }
 
         Thread.sleep(1000);
 
-        executor.execute("key", () -> run(latch, threadIdMap, "t"));
+        runner.run("key", () -> run(latch, threadIdMap, "t"));
 
-        synchronized (executor) {
-            assertEquals(1, ((Map<?, ?>) keyRunners.get(executor)).size());
+        synchronized (runner) {
+            assertEquals(1, ((Map<?, ?>) keyRunners.get(runner)).size());
         }
     }
 
