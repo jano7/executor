@@ -35,7 +35,7 @@ public final class KeySequentialRunner<Key> {
         private final LinkedList<Runnable> runnables = new LinkedList<>();
         private boolean active = false;
 
-        public synchronized void execute(Runnable runnable) {
+        public synchronized void run(Runnable runnable) {
             if (active) {
                 runnables.addFirst(runnable);
             } else {
@@ -73,11 +73,11 @@ public final class KeySequentialRunner<Key> {
     public synchronized void run(Key key, Runnable runnable) {
         KeyRunner runner = keyRunners.get(key);
         if (runner == null) {
-            scavengeInactiveRunners();
             runner = new KeyRunner();
             keyRunners.put(key, runner);
         }
-        runner.execute(runnable);
+        runner.run(runnable);
+        scavengeInactiveRunners();
     }
 
     private void scavengeInactiveRunners() {
