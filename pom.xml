@@ -7,6 +7,12 @@
     <version>1.0.0-SNAPSHOT</version>
 
     <name>Java Key Sequential Executor</name>
+    <description>This small library provides a optimized solution to a problem where tasks for a particular key need to
+        be processed sequentially as they arrive. This kind of problem can be solved by a SingleThreadExecutor, however
+        it is not efficient. The issue is that the tasks for unrelated keys are not being processed in parallel, instead
+        they are put into a queue common to all keys and wait for the single thread to execute them. This library allows
+        them to be executed concurrently.
+    </description>
     <url>https://github.com/jano7/executor</url>
 
     <licenses>
