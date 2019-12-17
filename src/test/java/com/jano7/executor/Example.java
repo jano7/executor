@@ -10,18 +10,25 @@ public class Example {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(20);
         KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
 
-        String tradeId = "1214324";
+        String tradeIdA = "327";
+        String tradeIdB = "831";
         Runnable task = new Runnable() {
             @Override
             public void run() {
-                System.out.println("e.g. book, amend or cancel the trade");
+                // process a message for the trade
             }
         };
 
-        runner.run(tradeId, task);
+        runner.run(tradeIdA, task); // execute the task by the underlying executor
+
+        runner.run(tradeIdB, task); // execution is not blocked by the task for tradeIdA
+
+        runner.run(tradeIdA, task); // execution starts when the previous task for tradeIdA completes
 
         KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
-        Runnable keyRunnable = new KeyRunnable<>(tradeId, task);
+
+        Runnable keyRunnable =
+                new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
 
         executor.execute(keyRunnable);
 

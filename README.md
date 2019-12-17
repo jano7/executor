@@ -10,28 +10,43 @@ Typical scenario in order management or booking systems is that messages for a p
 sequentially in the same order as they are received (otherwise the state of the trade will be incorrect). The same is
 true for any other trade - for example messages for the trade **B** must be processed sequentially as well. However it
 is desirable that a message for the trade **A** does not block processing of a message for the trade **B** (and vice
-versa) i.f they happen to arrive at the same time.
+versa) if they happen to arrive at the same time.
 ```
 ExecutorService underlyingExecutor = Executors.newFixedThreadPool(20);
 KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
 
-String tradeId = "1214324";
+String tradeIdA = "327";
+String tradeIdB = "831";
 Runnable task = new Runnable() {
     @Override
     public void run() {
-        // process the message e.g. cancel the trade
+        // process a message for the trade
     }
 };
 
-runner.run(tradeId, task);
-```
+runner.run(tradeIdA, task); // execute the task by the underlying executor
 
+runner.run(tradeIdB, task); // execution is not blocked by the task for tradeIdA
+
+runner.run(tradeIdA, task); // execution starts when the previous task for tradeIdA completes
+```
+In the example above the key is a trade ID. Tasks for a particular Trade ID are executed sequentially but they do not
+block tasks for other Trade IDs.
+
+Please note the Key needs to correctly implement `hashCode` and `equals` methods as the implementation relies on
+`HashMap`.
+
+If you need to provide an [Executor](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executor.html) you
+can use `KeySequentialExecutor` instead of `KeySequentialRunner` which accepts `Runnable` delegating `hashCode` and
+`equals` methods to the key.
 ```
 KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
-Runnable keyRunnable = new KeyRunnable<>(tradeId, task);
+
+Runnable keyRunnable = new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
 
 executor.execute(keyRunnable);
 ```
+The complete example can be found [here](src/test/java/com/jano7/executor/Example.java).
 ## Maven Dependency
 ```
 <dependency>

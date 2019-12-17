@@ -26,6 +26,7 @@ package com.jano7.executor;
 import org.junit.After;
 import org.junit.Test;
 
+import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,13 +35,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-public class KeySequentialExecutorTest {
+public class KeySequentialRunnerTest {
 
     private static final int THREAD_COUNT = 10;
     private final ExecutorService underlyingExecutor = Executors.newFixedThreadPool(THREAD_COUNT);
-    private final KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
+    private final KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
     private final Map<String, Long> threadIdMap = Collections.synchronizedMap(new HashMap<>());
 
     @After
@@ -50,36 +52,32 @@ public class KeySequentialExecutorTest {
     }
 
     @Test(timeout = 5000)
-    public void performCommandsOnSingleThread() throws InterruptedException {
-        final CountDownLatch latch1 = new CountDownLatch(2);
-        final CountDownLatch latch2 = new CountDownLatch(2);
+    public void noMemoryLeak() throws
+            NoSuchFieldException, IllegalArgumentException, IllegalAccessException, InterruptedException {
+        Field keyRunners = KeySequentialRunner.class.getDeclaredField("keyRunners");
+        keyRunners.setAccessible(true);
+        synchronized (runner) {
+            assertTrue(((Map<?, ?>) keyRunners.get(runner)).isEmpty());
+        }
 
-        executor.execute(new KeyRunnable<>("sameKey", () -> run(latch1, threadIdMap, "t1")));
-        executor.execute(new KeyRunnable<>("sameKey", () -> run(latch2, threadIdMap, "t2")));
-
-        latch1.await(1, TimeUnit.SECONDS);
-        latch1.countDown();
-        latch1.await();
-        latch2.countDown();
-        latch2.await();
-
-        assertNotNull(threadIdMap.get("t1"));
-        assertNotNull(threadIdMap.get("t2"));
-        assertEquals(threadIdMap.get("t1"), threadIdMap.get("t2"));
-    }
-
-    @Test(timeout = 5000)
-    public void performCommandsInParallel() throws InterruptedException {
-        final CountDownLatch latch = new CountDownLatch(2);
-
-        executor.execute(new KeyRunnable<>("key1", () -> run(latch, threadIdMap, "t1")));
-        executor.execute(new KeyRunnable<>("aDifferentKey", () -> run(latch, threadIdMap, "t2")));
+        final CountDownLatch latch = new CountDownLatch(THREAD_COUNT / 2);
+        for (int i = THREAD_COUNT / 2; i > 0; --i) {
+            runner.run(Integer.toString(i), () -> run(latch, threadIdMap, "t"));
+        }
 
         latch.await();
 
-        assertNotNull(threadIdMap.get("t1"));
-        assertNotNull(threadIdMap.get("t2"));
-        assertNotEquals(threadIdMap.get("t1"), threadIdMap.get("t2"));
+        synchronized (runner) {
+            assertEquals(THREAD_COUNT / 2, ((Map<?, ?>) keyRunners.get(runner)).size());
+        }
+
+        Thread.sleep(1000);
+
+        runner.run("key", () -> run(latch, threadIdMap, "t"));
+
+        synchronized (runner) {
+            assertEquals(1, ((Map<?, ?>) keyRunners.get(runner)).size());
+        }
     }
 
     private static void run(CountDownLatch latch, Map<String, Long> threadIdMap, String threadId) {
