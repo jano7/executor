@@ -1,4 +1,4 @@
-# Java Key Sequential Executor
+# Key Sequential Executor
 This small library provides a optimized solution to a problem where tasks for a particular key need to be processed
 sequentially as they arrive. This kind of problem can be solved by a [SingleThreadExecutor](
 https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newSingleThreadExecutor--), however it is
