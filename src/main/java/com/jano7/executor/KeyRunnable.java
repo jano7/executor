@@ -24,7 +24,7 @@ SOFTWARE.
 package com.jano7.executor;
 
 import java.util.Objects;
-// TODO test
+
 public class KeyRunnable<Key> implements Runnable {
 
     private final Key key;

@@ -23,17 +23,15 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
-import org.junit.After;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -41,48 +39,71 @@ import static org.junit.Assert.assertTrue;
 public class KeySequentialRunnerTest {
 
     private static final int THREAD_COUNT = 10;
-    private final ExecutorService underlyingExecutor = Executors.newFixedThreadPool(THREAD_COUNT);
-    private final KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
-    private final Map<String, Long> threadIdMap = Collections.synchronizedMap(new HashMap<>());
-
-    @After
-    public void shutDown() throws InterruptedException {
-        underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-    }
 
     @Test(timeout = 5000)
     public void noMemoryLeak() throws
             NoSuchFieldException, IllegalArgumentException, IllegalAccessException, InterruptedException {
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(THREAD_COUNT);
+        final AtomicBoolean acceptNewTasks = new AtomicBoolean(true);
+        Executor testExecutor = (Runnable runnable) -> {
+            if (acceptNewTasks.get()) {
+                underlyingExecutor.execute(runnable);
+            }
+        };
+
+        KeySequentialRunner<String> runner = new KeySequentialRunner<>(testExecutor);
+
         Field keyRunners = KeySequentialRunner.class.getDeclaredField("keyRunners");
         keyRunners.setAccessible(true);
-        synchronized (runner) {
-            assertTrue(((Map<?, ?>) keyRunners.get(runner)).isEmpty());
+
+        assertTrue(((Map<?, ?>) keyRunners.get(runner)).isEmpty());
+
+        final CountDownLatch latch = new CountDownLatch(1);
+        for (int i = THREAD_COUNT; i > 0; --i) {
+            runner.run(Integer.toString(i), () -> await(latch));
         }
 
-        final CountDownLatch latch = new CountDownLatch(THREAD_COUNT / 2);
-        for (int i = THREAD_COUNT / 2; i > 0; --i) {
-            runner.run(Integer.toString(i), () -> run(latch, threadIdMap, "t"));
+        assertEquals(THREAD_COUNT, ((Map<?, ?>) keyRunners.get(runner)).size());
+
+        latch.countDown();
+        acceptNewTasks.set(false);
+        underlyingExecutor.shutdown();
+        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+
+        runner.run("key", () -> {
+        });
+
+        assertEquals(1, ((Map<?, ?>) keyRunners.get(runner)).size());
+    }
+
+    @Test(timeout = 5000)
+    public void highLoad() throws InterruptedException {
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(THREAD_COUNT);
+        KeySequentialRunner<Integer> runner = new KeySequentialRunner<>(underlyingExecutor);
+        List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
+
+        for (int i = 0; i < 1000; ++i) {
+            final int toProcess = i;
+            runner.run(i % 2, () -> processed.add(toProcess));
         }
 
-        latch.await();
+        underlyingExecutor.shutdown();
+        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
 
-        synchronized (runner) {
-            assertEquals(THREAD_COUNT / 2, ((Map<?, ?>) keyRunners.get(runner)).size());
-        }
-
-        Thread.sleep(1000);
-
-        runner.run("key", () -> run(latch, threadIdMap, "t"));
-
-        synchronized (runner) {
-            assertEquals(1, ((Map<?, ?>) keyRunners.get(runner)).size());
+        int previousOdd = -1;
+        int previousEven = -2;
+        for (int p : processed) {
+            if (p % 2 == 0) {
+                assertEquals(previousEven + 2, p);
+                previousEven = p;
+            } else {
+                assertEquals(previousOdd + 2, p);
+                previousOdd = p;
+            }
         }
     }
 
-    private static void run(CountDownLatch latch, Map<String, Long> threadIdMap, String threadId) {
-        threadIdMap.put(threadId, Thread.currentThread().getId());
-        latch.countDown();
+    private static void await(CountDownLatch latch) {
         try {
             latch.await();
         } catch (InterruptedException e) {

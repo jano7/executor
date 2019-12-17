@@ -41,18 +41,17 @@ public class KeySequentialExecutorTest {
     private static final int THREAD_COUNT = 10;
     private final ExecutorService underlyingExecutor = Executors.newFixedThreadPool(THREAD_COUNT);
     private final KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
-    private final Map<String, Long> threadIdMap = Collections.synchronizedMap(new HashMap<>());
 
     @After
-    public void shutDown() throws InterruptedException {
-        underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+    public void shutDown() {
+        underlyingExecutor.shutdownNow();
     }
 
     @Test(timeout = 5000)
     public void performCommandsOnSingleThread() throws InterruptedException {
-        final CountDownLatch latch1 = new CountDownLatch(2);
-        final CountDownLatch latch2 = new CountDownLatch(2);
+        Map<String, Long> threadIdMap = Collections.synchronizedMap(new HashMap<>());
+        CountDownLatch latch1 = new CountDownLatch(2);
+        CountDownLatch latch2 = new CountDownLatch(2);
 
         executor.execute(new KeyRunnable<>("sameKey", () -> run(latch1, threadIdMap, "t1")));
         executor.execute(new KeyRunnable<>("sameKey", () -> run(latch2, threadIdMap, "t2")));
@@ -70,7 +69,8 @@ public class KeySequentialExecutorTest {
 
     @Test(timeout = 5000)
     public void performCommandsInParallel() throws InterruptedException {
-        final CountDownLatch latch = new CountDownLatch(2);
+        Map<String, Long> threadIdMap = Collections.synchronizedMap(new HashMap<>());
+        CountDownLatch latch = new CountDownLatch(2);
 
         executor.execute(new KeyRunnable<>("key1", () -> run(latch, threadIdMap, "t1")));
         executor.execute(new KeyRunnable<>("aDifferentKey", () -> run(latch, threadIdMap, "t2")));

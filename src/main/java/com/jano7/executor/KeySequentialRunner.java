@@ -35,7 +35,7 @@ public final class KeySequentialRunner<Key> {
         private final LinkedList<Runnable> runnables = new LinkedList<>();
         private boolean active = false;
 
-        public synchronized void run(Runnable runnable) {
+        public synchronized void run(final Runnable runnable) {
             if (active) {
                 runnables.addFirst(runnable);
             } else {
