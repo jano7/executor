@@ -25,7 +25,7 @@ package com.jano7.executor;
 
 import java.util.Objects;
 
-public class KeyRunnable<Key> implements Runnable {
+public final class KeyRunnable<Key> implements Runnable {
 
     private final Key key;
 
@@ -37,7 +37,7 @@ public class KeyRunnable<Key> implements Runnable {
     }
 
     @Override
-    public final boolean equals(Object o) {
+    public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         KeyRunnable<?> that = (KeyRunnable<?>) o;
@@ -45,12 +45,12 @@ public class KeyRunnable<Key> implements Runnable {
     }
 
     @Override
-    public final int hashCode() {
+    public int hashCode() {
         return Objects.hashCode(key);
     }
 
     @Override
-    public final void run() {
+    public void run() {
         runnable.run();
     }
 }
