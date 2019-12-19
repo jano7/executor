@@ -53,6 +53,6 @@ The complete example can be found [here](src/test/java/com/jano7/executor/Exampl
 <dependency>
   <groupId>com.jano7</groupId>
   <artifactId>executor</artifactId>
-  <version>1.0.0</version>
+  <version>1.0.1</version>
 </dependency>
 ```
