@@ -4,8 +4,7 @@ sequentially as they arrive. This kind of problem can be solved by a [SingleThre
 https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newSingleThreadExecutor--), however it is
 not efficient. The issue is that the tasks for unrelated keys are not being processed in parallel, instead they are put
 into a queue common to all keys and wait for the single thread to execute them. This library allows them to be executed
-concurrently.   
-
+concurrently. Moreover this library works well in a situation where all the possible keys are **not** known upfront.
 ## Example
 A typical scenario in order management or booking systems is that messages for a particular trade **A** must be
 processed sequentially in the same order as they are received (otherwise the state of the trade will be incorrect). The
@@ -18,6 +17,8 @@ KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecuto
 
 String tradeIdA = "327";
 String tradeIdB = "831";
+// more Trade IDs can arrive in a real scenario, but it is usually not known how many upfront
+
 Runnable task = new Runnable() {
     @Override
     public void run() {

@@ -35,6 +35,8 @@ public class Example {
 
         String tradeIdA = "327";
         String tradeIdB = "831";
+        // more Trade IDs can arrive in a real scenario, but it is usually not known how many upfront
+
         Runnable task = new Runnable() {
             @Override
             public void run() {

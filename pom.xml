@@ -10,7 +10,8 @@
         be processed sequentially as they arrive. This kind of problem can be solved by a SingleThreadExecutor, however
         it is not efficient. The issue is that the tasks for unrelated keys are not being processed in parallel, instead
         they are put into a queue common to all keys and wait for the single thread to execute them. This library allows
-        them to be executed concurrently.
+        them to be executed concurrently. Moreover this library works well in a situation where all the possible keys
+        are not known upfront.
     </description>
     <url>https://github.com/jano7/executor</url>
 
