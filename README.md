@@ -43,7 +43,7 @@ If you require an [Executor](https://docs.oracle.com/javase/8/docs/api/java/util
 `KeySequentialExecutor` instead of `KeySequentialRunner` which accepts `Runnable` delegating its `hashCode` and
 `equals` methods to the key.
 ```
-KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
+Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
 Runnable runnable = new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
 

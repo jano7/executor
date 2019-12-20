@@ -23,6 +23,7 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
+import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -50,7 +51,7 @@ public class Example {
 
         runner.run(tradeIdA, task); // execution starts when the previous task for tradeIdA completes
 
-        KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
+        Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
         Runnable runnable = new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
 
