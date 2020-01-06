@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.jano7</groupId>
@@ -6,12 +7,12 @@
     <version>1.0.2-SNAPSHOT</version>
 
     <name>Java Key Sequential Executor</name>
-    <description>This small library provides a optimized solution to a problem where tasks for a particular key need to
+    <description>This small library provides an optimized solution to a problem where tasks for a particular key need to
         be processed sequentially as they arrive. This kind of problem can be solved by a SingleThreadExecutor, however
         it is not efficient. The issue is that the tasks for unrelated keys are not being processed in parallel, instead
         they are put into a queue common to all keys and wait for the single thread to execute them. This library allows
         them to be executed concurrently. Moreover this library works well in a situation where all the possible keys
-        are not known upfront.
+        and their number is not known upfront.
     </description>
     <url>https://github.com/jano7/executor</url>
 
