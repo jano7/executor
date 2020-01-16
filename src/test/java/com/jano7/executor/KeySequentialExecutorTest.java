@@ -27,14 +27,13 @@ import org.junit.After;
 import org.junit.Test;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class KeySequentialExecutorTest {
 
@@ -48,48 +47,39 @@ public class KeySequentialExecutorTest {
     }
 
     @Test(timeout = 5000)
-    public void performCommandsOnSingleThread() throws InterruptedException {
-        Map<String, Long> threadIdMap = Collections.synchronizedMap(new HashMap<>());
-        CountDownLatch latch1 = new CountDownLatch(2);
-        CountDownLatch latch2 = new CountDownLatch(2);
+    public void runTasksWithIdenticalKeySequentially() throws InterruptedException {
+        List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
+        CountDownLatch key1Latch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(1);
 
-        executor.execute(new KeyRunnable<>("sameKey", () -> run(latch1, threadIdMap, "t1")));
-        executor.execute(new KeyRunnable<>("sameKey", () -> run(latch2, threadIdMap, "t2")));
+        Runnable key1Task1 = () -> {
+            try {
+                key1Latch.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            processed.add(1);
+        };
+        Runnable key1Task2 = () -> {
+            processed.add(2);
+            doneLatch.countDown();
+        };
+        Runnable key2Task1 = () -> processed.add(3);
+        Runnable key2Task2 = () -> {
+            processed.add(4);
+            key1Latch.countDown();
+        };
 
-        latch1.await(1, TimeUnit.SECONDS);
-        latch1.countDown();
-        latch1.await();
-        latch2.countDown();
-        latch2.await();
+        executor.execute(new KeyRunnable<>("key1", key1Task1));
+        executor.execute(new KeyRunnable<>("key1", key1Task2));
+        executor.execute(new KeyRunnable<>("key2", key2Task1));
+        executor.execute(new KeyRunnable<>("key2", key2Task2));
 
-        assertNotNull(threadIdMap.get("t1"));
-        assertNotNull(threadIdMap.get("t2"));
-        assertEquals(threadIdMap.get("t1"), threadIdMap.get("t2"));
-    }
+        doneLatch.await();
 
-    @Test(timeout = 5000)
-    public void performCommandsInParallel() throws InterruptedException {
-        Map<String, Long> threadIdMap = Collections.synchronizedMap(new HashMap<>());
-        CountDownLatch latch = new CountDownLatch(2);
-
-        executor.execute(new KeyRunnable<>("key1", () -> run(latch, threadIdMap, "t1")));
-        executor.execute(new KeyRunnable<>("aDifferentKey", () -> run(latch, threadIdMap, "t2")));
-
-        latch.await();
-
-        assertNotNull(threadIdMap.get("t1"));
-        assertNotNull(threadIdMap.get("t2"));
-        assertNotEquals(threadIdMap.get("t1"), threadIdMap.get("t2"));
-    }
-
-    private static void run(CountDownLatch latch, Map<String, Long> threadIdMap, String threadId) {
-        threadIdMap.put(threadId, Thread.currentThread().getId());
-        latch.countDown();
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            e.printStackTrace();
-        }
+        assertEquals(3, processed.get(0).intValue());
+        assertEquals(4, processed.get(1).intValue());
+        assertEquals(1, processed.get(2).intValue());
+        assertEquals(2, processed.get(3).intValue());
     }
 }

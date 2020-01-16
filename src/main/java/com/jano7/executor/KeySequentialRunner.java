@@ -27,31 +27,51 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
 
 public final class KeySequentialRunner<Key> {
 
     private final class KeyRunner {
 
-        private final LinkedList<Runnable> runnables = new LinkedList<>();
+        private final LinkedList<Runnable> tasks = new LinkedList<>();
         private boolean active = false;
 
-        public synchronized void run(final Runnable runnable) {
+        public synchronized void run(Runnable task) {
             if (active) {
-                runnables.addFirst(runnable);
+                tasks.addFirst(task);
             } else {
                 active = true;
-                underlyingExecutor.execute(() -> {
-                    runnable.run();
-                    Runnable nextRunnable;
-                    while ((nextRunnable = nextRunnableForCurrentThread()) != null) {
-                        nextRunnable.run();
-                    }
-                });
+                runTask(task);
             }
         }
 
-        private synchronized Runnable nextRunnableForCurrentThread() {
-            Runnable runnable = runnables.pollLast();
+        private void runTask(Runnable task) {
+            underlyingExecutor.execute(() -> {
+                try {
+                    task.run();
+                } catch (Throwable t) {
+                    exceptionHandler.handleTaskException(t);
+                } finally {
+                    Runnable next = nextTask();
+                    if (next != null) {
+                        try {
+                            runTask(next);
+                        } catch (RejectedExecutionException executorStopping) {
+                            do {
+                                try {
+                                    next.run();
+                                } catch (Throwable t) {
+                                    exceptionHandler.handleTaskException(t);
+                                }
+                            } while ((next = nextTask()) != null);
+                        }
+                    }
+                }
+            });
+        }
+
+        private synchronized Runnable nextTask() {
+            Runnable runnable = tasks.pollLast();
             if (runnable == null) {
                 active = false;
             }
@@ -64,19 +84,27 @@ public final class KeySequentialRunner<Key> {
     }
 
     private final Executor underlyingExecutor;
+    private final TaskExceptionHandler exceptionHandler;
     private final HashMap<Key, KeyRunner> keyRunners = new HashMap<>();
 
     public KeySequentialRunner(Executor underlyingExecutor) {
         this.underlyingExecutor = underlyingExecutor;
+        this.exceptionHandler = new TaskExceptionHandler() {
+        };
     }
 
-    public synchronized void run(Key key, Runnable runnable) {
+    public KeySequentialRunner(Executor underlyingExecutor, TaskExceptionHandler exceptionHandler) {
+        this.underlyingExecutor = underlyingExecutor;
+        this.exceptionHandler = exceptionHandler;
+    }
+
+    public synchronized void run(Key key, Runnable task) {
         KeyRunner runner = keyRunners.get(key);
         if (runner == null) {
             runner = new KeyRunner();
             keyRunners.put(key, runner);
         }
-        runner.run(runnable);
+        runner.run(task);
         scavengeInactiveRunners();
     }
 

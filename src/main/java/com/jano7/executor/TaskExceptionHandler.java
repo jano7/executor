@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2019 Jan Gaspar
+Copyright (c) 2020 Jan Gaspar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,22 +23,9 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
-import java.util.concurrent.Executor;
+public interface TaskExceptionHandler {
 
-public final class KeySequentialExecutor implements Executor {
-
-    private final KeySequentialRunner<Runnable> runner;
-
-    public KeySequentialExecutor(Executor underlyingExecutor) {
-        this.runner = new KeySequentialRunner<>(underlyingExecutor);
-    }
-
-    public KeySequentialExecutor(Executor underlyingExecutor, TaskExceptionHandler exceptionHandler) {
-        this.runner = new KeySequentialRunner<>(underlyingExecutor, exceptionHandler);
-    }
-
-    @Override
-    public void execute(Runnable task) {
-        runner.run(task, task);
+    default void handleTaskException(Throwable t) {
+        t.printStackTrace();
     }
 }

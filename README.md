@@ -36,8 +36,8 @@ runner.run(tradeIdA, task); // execution starts when the previous task for trade
 In the example above the key is a Trade ID. Tasks for a particular Trade ID are executed sequentially but they do not
 block tasks for other Trade IDs (unless the tasks are blocked by the underlying executor).
 
-Please note the Key needs to correctly implement `hashCode` and `equals` methods as the implementation relies on
-`HashMap`.
+Please note the Key needs to correctly implement `hashCode` and `equals` methods as the implementation stores the tasks
+in a `HashMap`.
 
 If you require an [Executor](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executor.html) you can use
 `KeySequentialExecutor` instead of `KeySequentialRunner` which accepts `Runnable` delegating its `hashCode` and
@@ -55,6 +55,6 @@ The complete example can be found [here](src/test/java/com/jano7/executor/Exampl
 <dependency>
   <groupId>com.jano7</groupId>
   <artifactId>executor</artifactId>
-  <version>1.0.1</version>
+  <version>1.0.2</version>
 </dependency>
 ```

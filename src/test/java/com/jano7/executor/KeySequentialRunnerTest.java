@@ -31,7 +31,6 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -44,10 +43,11 @@ public class KeySequentialRunnerTest {
     public void noMemoryLeak() throws
             NoSuchFieldException, IllegalArgumentException, IllegalAccessException, InterruptedException {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(THREAD_COUNT);
-        final AtomicBoolean acceptNewTasks = new AtomicBoolean(true);
         Executor testExecutor = (Runnable runnable) -> {
-            if (acceptNewTasks.get()) {
+            try {
                 underlyingExecutor.execute(runnable);
+            } catch (RejectedExecutionException ignored) {
+                runnable.run();
             }
         };
 
@@ -66,14 +66,13 @@ public class KeySequentialRunnerTest {
         assertEquals(THREAD_COUNT, ((Map<?, ?>) keyRunners.get(runner)).size());
 
         latch.countDown();
-        acceptNewTasks.set(false);
         underlyingExecutor.shutdown();
         underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
 
         runner.run("key", () -> {
         });
 
-        assertEquals(1, ((Map<?, ?>) keyRunners.get(runner)).size());
+        assertEquals(0, ((Map<?, ?>) keyRunners.get(runner)).size());
     }
 
     @Test(timeout = 5000)
