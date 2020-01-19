@@ -26,9 +26,6 @@ package com.jano7.executor;
 import org.junit.Test;
 
 import java.lang.reflect.Field;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
 
@@ -37,12 +34,11 @@ import static org.junit.Assert.assertTrue;
 
 public class KeySequentialRunnerTest {
 
-    private static final int THREAD_COUNT = 10;
 
     @Test(timeout = 5000)
-    public void noMemoryLeak() throws
-            NoSuchFieldException, IllegalArgumentException, IllegalAccessException, InterruptedException {
-        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(THREAD_COUNT);
+    public void noMemoryLeak() throws InterruptedException, IllegalAccessException, NoSuchFieldException {
+        final int threadCount = 10;
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(threadCount);
         Executor testExecutor = (Runnable runnable) -> {
             try {
                 underlyingExecutor.execute(runnable);
@@ -59,11 +55,17 @@ public class KeySequentialRunnerTest {
         assertTrue(((Map<?, ?>) keyRunners.get(runner)).isEmpty());
 
         final CountDownLatch latch = new CountDownLatch(1);
-        for (int i = THREAD_COUNT; i > 0; --i) {
-            runner.run(Integer.toString(i), () -> await(latch));
+        for (int i = threadCount; i > 0; --i) {
+            runner.run(Integer.toString(i), () -> {
+                try {
+                    latch.await();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            });
         }
 
-        assertEquals(THREAD_COUNT, ((Map<?, ?>) keyRunners.get(runner)).size());
+        assertEquals(threadCount, ((Map<?, ?>) keyRunners.get(runner)).size());
 
         latch.countDown();
         underlyingExecutor.shutdown();
@@ -73,41 +75,5 @@ public class KeySequentialRunnerTest {
         });
 
         assertEquals(0, ((Map<?, ?>) keyRunners.get(runner)).size());
-    }
-
-    @Test(timeout = 5000)
-    public void highLoad() throws InterruptedException {
-        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(THREAD_COUNT);
-        KeySequentialRunner<Integer> runner = new KeySequentialRunner<>(underlyingExecutor);
-        List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
-
-        for (int i = 0; i < 1000; ++i) {
-            final int toProcess = i;
-            runner.run(i % 2, () -> processed.add(toProcess));
-        }
-
-        underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-
-        int previousOdd = -1;
-        int previousEven = -2;
-        for (int p : processed) {
-            if (p % 2 == 0) {
-                assertEquals(previousEven + 2, p);
-                previousEven = p;
-            } else {
-                assertEquals(previousOdd + 2, p);
-                previousOdd = p;
-            }
-        }
-    }
-
-    private static void await(CountDownLatch latch) {
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            e.printStackTrace();
-        }
     }
 }

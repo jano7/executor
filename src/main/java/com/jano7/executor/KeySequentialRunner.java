@@ -47,24 +47,15 @@ public final class KeySequentialRunner<Key> {
 
         private void runTask(Runnable task) {
             underlyingExecutor.execute(() -> {
-                try {
-                    task.run();
-                } catch (Throwable t) {
-                    exceptionHandler.handleTaskException(t);
-                } finally {
-                    Runnable next = nextTask();
-                    if (next != null) {
-                        try {
-                            runTask(next);
-                        } catch (RejectedExecutionException executorStopping) {
-                            do {
-                                try {
-                                    next.run();
-                                } catch (Throwable t) {
-                                    exceptionHandler.handleTaskException(t);
-                                }
-                            } while ((next = nextTask()) != null);
-                        }
+                task.run();
+                Runnable next = nextTask();
+                if (next != null) {
+                    try {
+                        runTask(next);
+                    } catch (RejectedExecutionException executorStopping) {
+                        do {
+                            next.run();
+                        } while ((next = nextTask()) != null);
                     }
                 }
             });
@@ -104,7 +95,13 @@ public final class KeySequentialRunner<Key> {
             runner = new KeyRunner();
             keyRunners.put(key, runner);
         }
-        runner.run(task);
+        runner.run(() -> {
+            try {
+                task.run();
+            } catch (Throwable t) {
+                exceptionHandler.handleTaskException(t);
+            }
+        });
         scavengeInactiveRunners();
     }
 
