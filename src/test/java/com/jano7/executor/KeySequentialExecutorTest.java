@@ -134,4 +134,50 @@ public class KeySequentialExecutorTest {
 
         underlyingExecutor.shutdownNow();
     }
+
+    @Test(timeout = 5000)
+    public void taskExecutionDuringShutdown() throws InterruptedException {
+        LinkedBlockingQueue<Integer> queue = new LinkedBlockingQueue<>();
+        CountDownLatch latch1 = new CountDownLatch(1);
+        CountDownLatch latch2 = new CountDownLatch(1);
+
+        Runnable key1Task1 = () -> {
+            try {
+                latch1.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            queue.offer(1);
+        };
+        Runnable key1Task2 = () -> {
+            queue.offer(2);
+            latch2.countDown();
+        };
+        Runnable key2Task1 = () -> {
+            try {
+                latch2.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            queue.offer(3);
+        };
+        Runnable key2Task2 = () -> queue.offer(4);
+
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
+        KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
+        executor.execute(new KeyRunnable<>("key2", key2Task1));
+        executor.execute(new KeyRunnable<>("key2", key2Task2));
+        executor.execute(new KeyRunnable<>("key1", key1Task1));
+        executor.execute(new KeyRunnable<>("key1", key1Task2));
+
+        latch1.countDown();
+
+        underlyingExecutor.shutdown();
+        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+
+        assertEquals(1, queue.take().intValue());
+        assertEquals(2, queue.take().intValue());
+        assertEquals(3, queue.take().intValue());
+        assertEquals(4, queue.take().intValue());
+    }
 }

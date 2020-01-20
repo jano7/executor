@@ -52,12 +52,12 @@ executor.execute(runnable);
 The complete example can be found [here](src/test/java/com/jano7/executor/Example.java).
 
 The `KeySequentialExecutor` and `KeySequentialRunner` do not support back-pressure. It means that `execute` and `run`
-methods never block, instead the submitted tasks are put into a queue and wait there until they get executed by the
-underlying executor. In general this is not a problem, however in some situations it may cause an application to run out
-of memory as the number of waiting tasks grows. If you want to restrict the number of queued tasks, consider wrapping
-the `KeySequentialExecutor` in a
+methods never block, instead the submitted tasks are put into a queue where they wait until executed by the underlying
+executor. In many cases this is not a problem, however in some situations it may cause an application to run out of
+memory as the number of waiting tasks grows. If you want to restrict the number of queued tasks, consider wrapping the
+`KeySequentialExecutor` in a
 [BoundedExecutor](https://github.com/jcip/jcip.github.com/blob/master/listings/BoundedExecutor.java) which blocks the
-task submission when the number of tasks which haven't been executed yet hits the limit.
+task submission when the number of tasks, which haven't been executed yet, hits the limit.
 ## Maven Dependency
 ```
 <dependency>

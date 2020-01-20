@@ -34,7 +34,6 @@ import static org.junit.Assert.assertTrue;
 
 public class KeySequentialRunnerTest {
 
-
     @Test(timeout = 5000)
     public void noMemoryLeak() throws InterruptedException, IllegalAccessException, NoSuchFieldException {
         final int threadCount = 10;
