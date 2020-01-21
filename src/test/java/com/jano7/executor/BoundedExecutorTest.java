@@ -38,10 +38,11 @@ public class BoundedExecutorTest {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
         KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
         AtomicInteger completed = new AtomicInteger(0);
-        CountDownLatch latch = new CountDownLatch(1);
+        CountDownLatch block = new CountDownLatch(1);
+        CountDownLatch done = new CountDownLatch(1);
         Runnable blockingTask = new KeyRunnable<>("key", () -> {
             try {
-                latch.await();
+                block.await();
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -60,13 +61,15 @@ public class BoundedExecutorTest {
         Thread t = new Thread(() -> {
             bounded.execute(simpleTask);
             submitted.set(true);
+            done.countDown();
         });
         t.start();
         t.join(1000L);
 
         assertFalse(submitted.get());
 
-        latch.countDown();
+        block.countDown();
+        done.await();
 
         underlyingExecutor.shutdown();
         underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
