@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2019 Jan Gaspar
+Copyright (c) 2020 Jan Gaspar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -24,22 +24,38 @@ SOFTWARE.
 package com.jano7.executor;
 
 import java.util.concurrent.Executor;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.Semaphore;
 
-public final class KeySequentialExecutor implements Executor {
+public final class BoundedExecutor implements Executor {
 
-    private final KeySequentialRunner<Runnable> runner;
+    private final Semaphore semaphore;
 
-    public KeySequentialExecutor(Executor underlyingExecutor) {
-        this.runner = new KeySequentialRunner<>(underlyingExecutor);
-    }
+    private final KeySequentialExecutor executor;
 
-    public KeySequentialExecutor(Executor underlyingExecutor, TaskExceptionHandler exceptionHandler) {
-        this.runner = new KeySequentialRunner<>(underlyingExecutor, exceptionHandler);
+    public BoundedExecutor(int maxTasks, KeySequentialExecutor executor) {
+        this.semaphore = new Semaphore(maxTasks);
+        this.executor = executor;
     }
 
     @Override
     public void execute(Runnable task) {
         if (task == null) throw new NullPointerException("Task is null");
-        runner.run(task, task);
+        semaphore.acquireUninterruptibly();
+        try {
+            executor.execute(new KeyRunnable<>(
+                    task,
+                    () -> {
+                        try {
+                            task.run();
+                        } finally {
+                            semaphore.release();
+                        }
+                    })
+            );
+        } catch (RejectedExecutionException e) {
+            semaphore.release();
+            throw e;
+        }
     }
 }

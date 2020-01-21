@@ -44,7 +44,7 @@ public class KeySequentialExecutorTest {
             try {
                 key1Latch.await();
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
             processed.add(1);
         };
@@ -145,7 +145,7 @@ public class KeySequentialExecutorTest {
             try {
                 latch1.await();
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
             queue.offer(1);
         };
@@ -157,7 +157,7 @@ public class KeySequentialExecutorTest {
             try {
                 latch2.await();
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
             }
             queue.offer(3);
         };
@@ -179,5 +179,17 @@ public class KeySequentialExecutorTest {
         assertEquals(2, queue.take().intValue());
         assertEquals(3, queue.take().intValue());
         assertEquals(4, queue.take().intValue());
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void throwExceptionWhenTaskIsNull() {
+        ExecutorService underlying = Executors.newCachedThreadPool();
+        Executor executor = new KeySequentialExecutor(underlying);
+
+        try {
+            executor.execute(null);
+        } finally {
+            underlying.shutdownNow();
+        }
     }
 }
