@@ -87,4 +87,28 @@ public class BoundedExecutorTest {
             underlying.shutdownNow();
         }
     }
+
+    @Test(timeout = 5000)
+    public void releaseLockOnException() {
+        Executor underlying = command -> {
+            throw new RejectedExecutionException();
+        };
+        KeySequentialExecutor executor = new KeySequentialExecutor(underlying);
+        Executor bounded = new BoundedExecutor(1, executor);
+
+        int caught = 0;
+        try {
+            bounded.execute(() -> {
+            });
+        } catch (RejectedExecutionException e) {
+            caught += 1;
+        }
+        try {
+            bounded.execute(() -> {
+            });
+        } catch (RejectedExecutionException e) {
+            caught += 1;
+        }
+        assertEquals(2, caught);
+    }
 }

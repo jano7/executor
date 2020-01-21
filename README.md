@@ -1,6 +1,6 @@
 # Key Sequential Executor
 This small library provides an optimized solution to a problem where tasks for a particular key need to be processed
-sequentially as they arrive. This kind of problem can be solved by a [SingleThreadExecutor](
+sequentially as they arrive. This kind of problem can be solved by a [`SingleThreadExecutor`](
 https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executors.html#newSingleThreadExecutor--), however it is
 not efficient. The issue is that the tasks for unrelated keys are not being processed in parallel, instead they are put
 into a queue common to all keys and wait for the single thread to execute them. This library allows them to be executed
@@ -39,9 +39,11 @@ block tasks for other Trade IDs (unless the tasks are blocked by the underlying 
 Please note the Key needs to correctly implement `hashCode` and `equals` methods as the implementation stores the tasks
 in a `HashMap`.
 
-If you require an [Executor](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executor.html) you can use
-`KeySequentialExecutor` instead of `KeySequentialRunner` which accepts `Runnable` delegating its `hashCode` and
-`equals` methods to the key.
+If you require an [`Executor`](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/Executor.html) you can use
+[`KeySequentialExecutor`](src/main/java/com/jano7/executor/KeySequentialExecutor.java) instead of
+[`KeySequentialRunner`](src/main/java/com/jano7/executor/KeySequentialRunner.java) which accepts
+[`Runnable`](src/main/java/com/jano7/executor/KeyRunnable.java) delegating its `hashCode` and `equals` methods to the
+key.
 ```
 Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
@@ -55,7 +57,7 @@ The `KeySequentialExecutor` and `KeySequentialRunner` do not support back-pressu
 methods never block, instead the submitted tasks are put into a queue where they wait until executed by the underlying
 executor. In many cases this is not a problem, however in some situations it may cause an application to run out of
 memory as the number of waiting tasks grows. If you want to restrict the number of queued tasks, consider wrapping the
-`KeySequentialExecutor` in a [BoundedExecutor](src/main/java/com/jano7/executor/BoundedExecutor.java) which blocks the
+`KeySequentialExecutor` in a [`BoundedExecutor`](src/main/java/com/jano7/executor/BoundedExecutor.java) which blocks the
 task submission when the number of tasks, which haven't been executed yet, hits the limit.
 ## Maven Dependency
 ```
