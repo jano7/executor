@@ -77,6 +77,7 @@ public class Examples {
 
         // before shutting down you can call a drain() method which blocks until all submitted task have been executed
         boundedExecutor.drain();
+
         // newly submitted tasks will be rejected after calling drain()
 
         underlyingExecutor.shutdown();
