@@ -3,7 +3,7 @@
 
     <groupId>com.jano7</groupId>
     <artifactId>executor</artifactId>
-    <version>1.0.4</version>
+    <version>1.0.5-SNAPSHOT</version>
 
     <name>Java Key Sequential Executor</name>
     <description>This small library provides an optimized solution to a problem where tasks for a particular key need to
@@ -152,7 +152,7 @@
         <connection>scm:git:git://github.com/jano7/executor.git</connection>
         <developerConnection>scm:git:git@github.com:jano7/executor.git</developerConnection>
         <url>https://github.com/jano7/executor</url>
-        <tag>executor-1.0.4</tag>
+        <tag>executor-1.0.3</tag>
     </scm>
 
 </project>
