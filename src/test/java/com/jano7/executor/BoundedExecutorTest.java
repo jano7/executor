@@ -117,33 +117,46 @@ public class BoundedExecutorTest {
         assertTrue(thrown);
     }
 
-    @Test(timeout = 5000)
+    @Test(timeout = 10000)
     public void drain() throws InterruptedException {
-        ExecutorService underlying = Executors.newFixedThreadPool(5);
-
         for (int i = 0; i < 1000; ++i) {
+            ExecutorService underlying = Executors.newFixedThreadPool(5);
             BoundedExecutor bounded = new BoundedExecutor(10, underlying);
+            CountDownLatch latch = new CountDownLatch(1);
             AtomicInteger completed = new AtomicInteger(0);
+
             for (int j = 0; j < 10; ++j) {
                 bounded.execute(completed::incrementAndGet);
             }
-            bounded.drain();
-            assertEquals(10, completed.get());
+            bounded.execute(() -> {
+                try {
+                    latch.await();
+                    completed.incrementAndGet();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
+            assertFalse(bounded.drain(1, TimeUnit.MILLISECONDS));
+
+            latch.countDown();
+
+            assertTrue(bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS));
+            assertEquals(11, completed.get());
+            assertTrue(underlying.shutdownNow().isEmpty());
         }
 
-        underlying.shutdown();
-        underlying.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
     }
 
     @Test(timeout = 5000, expected = RejectedExecutionException.class)
-    public void rejectTasksAfterDrain() {
+    public void rejectTasksAfterDrain() throws InterruptedException {
         ExecutorService underlying = Executors.newCachedThreadPool();
         BoundedExecutor bounded = new BoundedExecutor(10, underlying);
 
         bounded.execute(() -> {
         });
 
-        bounded.drain();
+        bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS);
         try {
             bounded.execute(() -> {
             });
@@ -153,15 +166,15 @@ public class BoundedExecutorTest {
     }
 
     @Test(timeout = 5000)
-    public void callDrainMultipleTime() {
+    public void callDrainMultipleTime() throws InterruptedException {
         ExecutorService underlying = Executors.newCachedThreadPool();
         BoundedExecutor bounded = new BoundedExecutor(10, underlying);
 
         bounded.execute(() -> {
         });
 
-        bounded.drain();
-        bounded.drain();
+        bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS);
+        bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS);
 
         underlying.shutdownNow();
     }

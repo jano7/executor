@@ -26,6 +26,7 @@ package com.jano7.executor;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
+import java.util.concurrent.TimeUnit;
 
 public final class BoundedExecutor implements Executor {
 
@@ -74,11 +75,11 @@ public final class BoundedExecutor implements Executor {
         }
     }
 
-    public void drain() {
-        synchronized (this) {
-            semaphore.acquireUninterruptibly(maxTasks);
+    public synchronized boolean drain(long timeout, TimeUnit unit) throws InterruptedException {
+        if (semaphore.tryAcquire(maxTasks, timeout, unit)) {
             drained = true;
+            semaphore.release(maxTasks);
         }
-        semaphore.release(maxTasks);
+        return drained;
     }
 }

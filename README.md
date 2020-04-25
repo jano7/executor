@@ -71,13 +71,12 @@ boundedExecutor.execute(aTask);
 
 // execute more tasks ... at most 10 will be scheduled
 
-// before shutting down you can call a drain() method which blocks until all submitted task have been executed
-boundedExecutor.drain();
+// before shutting down you can call a 'drain' method which blocks until all submitted task have been executed
+boundedExecutor.drain(aTimeout, TimeUnit.SECONDS); // returns true if drained; false if timeout elapses
 
-// newly submitted tasks will be rejected after calling drain()
+// newly submitted tasks will be rejected after calling 'drain'
 
-underlyingExecutor.shutdown();
-underlyingExecutor.awaitTermination(aTimeout, TimeUnit.SECONDS);
+underlyingExecutor.shutdownNow(); // safe to call 'shutdownNow' if drained as there should be no active tasks
 ```
 The source code of the examples can be found [here](src/test/java/com/jano7/executor/Examples.java).
 
@@ -88,6 +87,6 @@ from multiple threads without synchronization.
 <dependency>
   <groupId>com.jano7</groupId>
   <artifactId>executor</artifactId>
-  <version>1.0.3</version>
+  <version>1.0.4</version>
 </dependency>
 ```
