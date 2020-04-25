@@ -51,7 +51,6 @@ Runnable runnable = new KeyRunnable<>(tradeIdA, task); // helper class delegatin
 
 executor.execute(runnable);
 ```
-The complete example can be found [here](src/test/java/com/jano7/executor/Example.java).
 
 The `KeySequentialExecutor` and `KeySequentialRunner` do not support back-pressure. It means that `execute` and `run`
 methods never block, instead the submitted tasks are put into a queue where they wait until executed by the underlying
@@ -59,6 +58,29 @@ executor. In many cases this is not a problem, however in some situations it may
 memory as the number of waiting tasks grows. If you want to restrict the number of queued tasks, consider wrapping the
 `KeySequentialExecutor` in a [`BoundedExecutor`](src/main/java/com/jano7/executor/BoundedExecutor.java) which blocks the
 task submission when the number of tasks, which haven't been executed yet, hits the limit.
+```
+ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
+BoundedExecutor boundedExecutor = new BoundedExecutor(10, underlyingExecutor);
+
+KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
+    // do something
+});
+
+boundedExecutor.execute(aTask);
+
+// execute more tasks ...
+
+// before shutting down you can call a drain() method which blocks until all submitted task have been executed
+boundedExecutor.drain();
+// newly submitted tasks will be rejected after calling drain()
+
+underlyingExecutor.shutdown();
+underlyingExecutor.awaitTermination(aTimeout, TimeUnit.SECONDS);
+```
+The source code of the examples can be found [here](src/test/java/com/jano7/executor/Examples.java).
+
+A note on **thread-safety**: The library is thread-safe; i.e. methods `run`, `execute` or `drain` can be safely invoked
+from multiple threads without synchronization. 
 ## Maven Dependency
 ```
 <dependency>

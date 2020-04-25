@@ -181,7 +181,7 @@ public class KeySequentialExecutorTest {
         assertEquals(4, queue.take().intValue());
     }
 
-    @Test(expected = NullPointerException.class)
+    @Test(timeout = 5000, expected = NullPointerException.class)
     public void throwExceptionWhenTaskIsNull() {
         ExecutorService underlying = Executors.newCachedThreadPool();
         Executor executor = new KeySequentialExecutor(underlying);

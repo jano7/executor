@@ -116,4 +116,53 @@ public class BoundedExecutorTest {
 
         assertTrue(thrown);
     }
+
+    @Test(timeout = 5000)
+    public void drain() throws InterruptedException {
+        ExecutorService underlying = Executors.newFixedThreadPool(5);
+
+        for (int i = 0; i < 1000; ++i) {
+            BoundedExecutor bounded = new BoundedExecutor(10, underlying);
+            AtomicInteger completed = new AtomicInteger(0);
+            for (int j = 0; j < 10; ++j) {
+                bounded.execute(completed::incrementAndGet);
+            }
+            bounded.drain();
+            assertEquals(10, completed.get());
+        }
+
+        underlying.shutdown();
+        underlying.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+    }
+
+    @Test(timeout = 5000, expected = RejectedExecutionException.class)
+    public void rejectTasksAfterDrain() {
+        ExecutorService underlying = Executors.newCachedThreadPool();
+        BoundedExecutor bounded = new BoundedExecutor(10, underlying);
+
+        bounded.execute(() -> {
+        });
+
+        bounded.drain();
+        try {
+            bounded.execute(() -> {
+            });
+        } finally {
+            underlying.shutdownNow();
+        }
+    }
+
+    @Test(timeout = 5000)
+    public void callDrainMultipleTime() {
+        ExecutorService underlying = Executors.newCachedThreadPool();
+        BoundedExecutor bounded = new BoundedExecutor(10, underlying);
+
+        bounded.execute(() -> {
+        });
+
+        bounded.drain();
+        bounded.drain();
+
+        underlying.shutdownNow();
+    }
 }

@@ -28,9 +28,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class Example {
+public class Examples {
 
-    public static void main(String[] args) throws InterruptedException {
+    private static long aTimeout = 30;
+
+    public static void basicExample() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
         KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
 
@@ -58,6 +60,31 @@ public class Example {
         executor.execute(runnable);
 
         underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(30, TimeUnit.SECONDS);
+        underlyingExecutor.awaitTermination(aTimeout, TimeUnit.SECONDS);
+    }
+
+    public static void boundedExecutorExample() throws InterruptedException {
+        ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
+        BoundedExecutor boundedExecutor = new BoundedExecutor(10, underlyingExecutor);
+
+        KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
+            // do something
+        });
+
+        boundedExecutor.execute(aTask);
+
+        // execute more tasks ...
+
+        // before shutting down you can call a drain() method which blocks until all submitted task have been executed
+        boundedExecutor.drain();
+        // newly submitted tasks will be rejected after calling drain()
+
+        underlyingExecutor.shutdown();
+        underlyingExecutor.awaitTermination(aTimeout, TimeUnit.SECONDS);
+    }
+
+    public static void main(String[] args) throws InterruptedException {
+        basicExample();
+        boundedExecutorExample();
     }
 }

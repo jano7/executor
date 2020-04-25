@@ -29,19 +29,34 @@ import java.util.concurrent.Semaphore;
 
 public final class BoundedExecutor implements Executor {
 
+    private final int maxTasks;
+
     private final Semaphore semaphore;
 
     private final KeySequentialExecutor executor;
 
+    private boolean drained = false;
+
     public BoundedExecutor(int maxTasks, KeySequentialExecutor executor) {
+        this.maxTasks = maxTasks;
         this.semaphore = new Semaphore(maxTasks);
         this.executor = executor;
+    }
+
+    public BoundedExecutor(int maxTasks, Executor underlyingExecutor) {
+        this(maxTasks, new KeySequentialExecutor(underlyingExecutor));
     }
 
     @Override
     public void execute(Runnable task) {
         if (task == null) throw new NullPointerException("Task is null");
-        semaphore.acquireUninterruptibly();
+        synchronized (this) {
+            if (drained) {
+                throw new RejectedExecutionException(getClass().getSimpleName() + " drained");
+            } else {
+                semaphore.acquireUninterruptibly();
+            }
+        }
         try {
             executor.execute(new KeyRunnable<>(
                     task,
@@ -57,5 +72,13 @@ public final class BoundedExecutor implements Executor {
             semaphore.release();
             throw e;
         }
+    }
+
+    public void drain() {
+        synchronized (this) {
+            semaphore.acquireUninterruptibly(maxTasks);
+            drained = true;
+        }
+        semaphore.release(maxTasks);
     }
 }
