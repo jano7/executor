@@ -145,7 +145,6 @@ public class BoundedExecutorTest {
             assertEquals(11, completed.get());
             assertTrue(underlying.shutdownNow().isEmpty());
         }
-
     }
 
     @Test(timeout = 5000, expected = RejectedExecutionException.class)
@@ -166,15 +165,15 @@ public class BoundedExecutorTest {
     }
 
     @Test(timeout = 5000)
-    public void callDrainMultipleTime() throws InterruptedException {
+    public void safeToCallDrainMultipleTime() throws InterruptedException {
         ExecutorService underlying = Executors.newCachedThreadPool();
         BoundedExecutor bounded = new BoundedExecutor(10, underlying);
 
         bounded.execute(() -> {
         });
 
-        bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS);
-        bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS);
+        assertTrue(bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS));
+        assertTrue(bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS));
 
         underlying.shutdownNow();
     }
