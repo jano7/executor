@@ -60,7 +60,8 @@ memory as the number of waiting tasks grows. If you want to restrict the number 
 task submission when the number of tasks, which haven't been executed yet, hits the limit.
 ```
 ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
-BoundedExecutor boundedExecutor = new BoundedExecutor(10, underlyingExecutor);
+int maxTasks = 10;
+BoundedExecutor boundedExecutor = new BoundedExecutor(maxTasks, underlyingExecutor);
 
 KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
     // do something
@@ -68,7 +69,7 @@ KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
 
 boundedExecutor.execute(aTask);
 
-// execute more tasks ...
+// execute more tasks ... at most 10 will be scheduled
 
 // before shutting down you can call a drain() method which blocks until all submitted task have been executed
 boundedExecutor.drain();
