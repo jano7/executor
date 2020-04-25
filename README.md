@@ -72,7 +72,7 @@ boundedExecutor.execute(aTask);
 // execute more tasks ... at most 10 will be scheduled
 
 // before shutting down you can call a 'drain' method which blocks until all submitted task have been executed
-boundedExecutor.drain(aTimeout, TimeUnit.SECONDS); // returns true if drained; false if timeout elapses
+boundedExecutor.drain(aTimeout, TimeUnit.SECONDS); // returns true if drained; false if the timeout elapses
 
 // newly submitted tasks will be rejected after calling 'drain'
 
