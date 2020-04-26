@@ -121,28 +121,31 @@ public class BoundedExecutorTest {
     public void drain() throws InterruptedException {
         for (int i = 0; i < 1000; ++i) {
             ExecutorService underlying = Executors.newFixedThreadPool(5);
-            BoundedExecutor bounded = new BoundedExecutor(10, underlying);
+            BoundedExecutor bounded = new BoundedExecutor(20, underlying);
             CountDownLatch latch = new CountDownLatch(1);
             AtomicInteger completed = new AtomicInteger(0);
 
             for (int j = 0; j < 10; ++j) {
-                bounded.execute(completed::incrementAndGet);
-            }
-            bounded.execute(() -> {
-                try {
-                    latch.await();
-                    completed.incrementAndGet();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                if (j == 5) {
+                    bounded.execute(() -> {
+                        try {
+                            latch.await();
+                            completed.incrementAndGet();
+                        } catch (InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    });
+                } else {
+                    bounded.execute(completed::incrementAndGet);
                 }
-            });
+            }
 
             assertFalse(bounded.drain(1, TimeUnit.MILLISECONDS));
 
             latch.countDown();
 
             assertTrue(bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS));
-            assertEquals(11, completed.get());
+            assertEquals(10, completed.get());
             assertTrue(underlying.shutdownNow().isEmpty());
         }
     }

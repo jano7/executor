@@ -76,9 +76,8 @@ public final class BoundedExecutor implements Executor {
     }
 
     public synchronized boolean drain(long timeout, TimeUnit unit) throws InterruptedException {
-        if (semaphore.tryAcquire(maxTasks, timeout, unit)) {
+        if (!drained && semaphore.tryAcquire(maxTasks, timeout, unit)) {
             drained = true;
-            semaphore.release(maxTasks);
         }
         return drained;
     }
