@@ -66,7 +66,7 @@ public class Examples {
     public static void boundedExecutorExample() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
         int maxTasks = 10;
-        BoundedExecutor boundedExecutor = new BoundedExecutor(maxTasks, underlyingExecutor);
+        KeySequentialBoundedExecutor boundedExecutor = new KeySequentialBoundedExecutor(maxTasks, underlyingExecutor);
 
         KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
             // do something

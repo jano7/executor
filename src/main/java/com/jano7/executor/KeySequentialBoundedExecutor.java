@@ -28,7 +28,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-public final class BoundedExecutor implements Executor {
+public final class KeySequentialBoundedExecutor implements Executor {
 
     private final int maxTasks;
 
@@ -38,13 +38,13 @@ public final class BoundedExecutor implements Executor {
 
     private boolean drained = false;
 
-    public BoundedExecutor(int maxTasks, KeySequentialExecutor executor) {
+    public KeySequentialBoundedExecutor(int maxTasks, KeySequentialExecutor executor) {
         this.maxTasks = maxTasks;
         this.semaphore = new Semaphore(maxTasks);
         this.executor = executor;
     }
 
-    public BoundedExecutor(int maxTasks, Executor underlyingExecutor) {
+    public KeySequentialBoundedExecutor(int maxTasks, Executor underlyingExecutor) {
         this(maxTasks, new KeySequentialExecutor(underlyingExecutor));
     }
 
