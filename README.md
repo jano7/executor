@@ -61,7 +61,7 @@ task submission when the number of tasks, which haven't been executed yet, hits 
 ```
 ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
 int maxTasks = 10;
-BoundedExecutor boundedExecutor = new KeySequentialBoundedExecutor(maxTasks, underlyingExecutor);
+KeySequentialBoundedExecutor boundedExecutor = new KeySequentialBoundedExecutor(maxTasks, underlyingExecutor);
 
 KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
     // do something
