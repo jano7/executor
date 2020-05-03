@@ -30,7 +30,7 @@ import java.util.concurrent.TimeUnit;
 
 public class Examples {
 
-    private static long aTimeout = 30;
+    private static final long aTimeout = 30;
 
     public static void basicExample() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
