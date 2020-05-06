@@ -12,7 +12,7 @@ processed sequentially in the same order as they are received (otherwise the sta
 same is true for any other trade - for example messages for the trade **B** must be processed sequentially as well.
 However it is desirable that a message for the trade **A** does not block processing of a message for the trade **B**
 (and vice versa) if they happen to arrive at the same time.
-```
+```java
 ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
 KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
 
@@ -44,7 +44,7 @@ If you require an [`Executor`](https://docs.oracle.com/javase/8/docs/api/java/ut
 [`KeySequentialRunner`](src/main/java/com/jano7/executor/KeySequentialRunner.java) which accepts
 [`Runnable`](src/main/java/com/jano7/executor/KeyRunnable.java) delegating its `hashCode` and `equals` methods to the
 key.
-```
+```java
 Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
 Runnable runnable = new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
@@ -58,7 +58,7 @@ executor. In many cases this is not a problem, however in some situations it may
 memory as the number of waiting tasks grows. If you want to restrict the number of queued tasks, consider use of a
 [`KeySequentialBoundedExecutor`](src/main/java/com/jano7/executor/KeySequentialBoundedExecutor.java) which blocks the
 task submission when the number of tasks, which haven't been executed yet, hits the limit.
-```
+```java
 ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
 int maxTasks = 10;
 KeySequentialBoundedExecutor boundedExecutor = new KeySequentialBoundedExecutor(maxTasks, underlyingExecutor);
