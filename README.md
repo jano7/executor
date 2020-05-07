@@ -83,7 +83,7 @@ The source code of the examples can be found [here](src/test/java/com/jano7/exec
 A note on **thread-safety**: The library is thread-safe; i.e. methods `run`, `execute` or `drain` can be safely invoked
 from multiple threads without synchronization. 
 ## Maven Dependency
-```
+```xml
 <dependency>
   <groupId>com.jano7</groupId>
   <artifactId>executor</artifactId>
