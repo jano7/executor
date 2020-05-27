@@ -27,7 +27,10 @@ import org.junit.Test;
 
 import java.lang.reflect.Field;
 import java.util.Map;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -38,15 +41,8 @@ public class KeySequentialRunnerTest {
     public void noMemoryLeak() throws InterruptedException, IllegalAccessException, NoSuchFieldException {
         final int threadCount = 10;
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(threadCount);
-        Executor testExecutor = (Runnable runnable) -> {
-            try {
-                underlyingExecutor.execute(runnable);
-            } catch (RejectedExecutionException ignored) {
-                runnable.run();
-            }
-        };
 
-        KeySequentialRunner<String> runner = new KeySequentialRunner<>(testExecutor);
+        KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
 
         Field keyRunners = KeySequentialRunner.class.getDeclaredField("keyRunners");
         keyRunners.setAccessible(true);
@@ -69,9 +65,6 @@ public class KeySequentialRunnerTest {
         latch.countDown();
         underlyingExecutor.shutdown();
         underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-
-        runner.run("key", () -> {
-        });
 
         assertEquals(0, ((Map<?, ?>) keyRunners.get(runner)).size());
     }

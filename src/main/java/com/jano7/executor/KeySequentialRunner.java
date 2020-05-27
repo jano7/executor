@@ -23,7 +23,6 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.concurrent.Executor;
@@ -33,16 +32,37 @@ public final class KeySequentialRunner<Key> {
 
     private final class KeyRunner {
 
-        private final LinkedList<Runnable> tasks = new LinkedList<>();
-        private boolean active = false;
+        private final Key key;
+        private LinkedList<Runnable> tasks;
 
-        public synchronized void run(Runnable task) {
-            if (active) {
-                tasks.addFirst(task);
-            } else {
-                active = true;
+        KeyRunner(Key key) {
+            this.key = key;
+        }
+
+        synchronized void run(Runnable task) {
+            if (tasks == null) {
+                tasks = new LinkedList<>();
                 runTask(task);
+            } else {
+                tasks.add(task);
             }
+        }
+
+        private synchronized Runnable pollTask() {
+            return tasks.poll();
+        }
+
+        private Runnable nextTask() {
+            Runnable runnable = pollTask();
+            if (runnable == null) {
+                synchronized (KeySequentialRunner.this) {
+                    runnable = pollTask();
+                    if (runnable == null) {
+                        keyRunners.remove(key);
+                    }
+                }
+            }
+            return runnable;
         }
 
         private void runTask(Runnable task) {
@@ -59,18 +79,6 @@ public final class KeySequentialRunner<Key> {
                     }
                 }
             });
-        }
-
-        private synchronized Runnable nextTask() {
-            Runnable runnable = tasks.pollLast();
-            if (runnable == null) {
-                active = false;
-            }
-            return runnable;
-        }
-
-        public synchronized boolean isActive() {
-            return active;
         }
     }
 
@@ -90,26 +98,12 @@ public final class KeySequentialRunner<Key> {
     }
 
     public synchronized void run(Key key, Runnable task) {
-        KeyRunner runner = keyRunners.get(key);
-        if (runner == null) {
-            runner = new KeyRunner();
-            keyRunners.put(key, runner);
-        }
-        runner.run(() -> {
+        keyRunners.computeIfAbsent(key, KeyRunner::new).run(() -> {
             try {
                 task.run();
             } catch (Throwable t) {
                 exceptionHandler.handleTaskException(t);
             }
         });
-        scavengeInactiveRunners();
-    }
-
-    private void scavengeInactiveRunners() {
-        for (Key key : new ArrayList<>(keyRunners.keySet())) {
-            if (!keyRunners.get(key).isActive()) {
-                keyRunners.remove(key);
-            }
-        }
     }
 }
