@@ -32,40 +32,22 @@ public final class KeySequentialRunner<Key> {
 
     private final class KeyRunner {
 
+        private final LinkedList<Runnable> tasks = new LinkedList<>();
         private final Key key;
-        private LinkedList<Runnable> tasks;
 
         KeyRunner(Key key) {
             this.key = key;
         }
 
-        synchronized void run(Runnable task) {
-            if (tasks == null) {
-                tasks = new LinkedList<>();
-                runTask(task);
-            } else {
-                tasks.add(task);
-            }
+        synchronized void addTask(Runnable task) {
+            tasks.add(task);
         }
 
         private synchronized Runnable pollTask() {
             return tasks.poll();
         }
 
-        private Runnable nextTask() {
-            Runnable runnable = pollTask();
-            if (runnable == null) {
-                synchronized (KeySequentialRunner.this) {
-                    runnable = pollTask();
-                    if (runnable == null) {
-                        keyRunners.remove(key);
-                    }
-                }
-            }
-            return runnable;
-        }
-
-        private void runTask(Runnable task) {
+        void runTask(Runnable task) {
             underlyingExecutor.execute(() -> {
                 task.run();
                 Runnable next = nextTask();
@@ -79,6 +61,19 @@ public final class KeySequentialRunner<Key> {
                     }
                 }
             });
+        }
+
+        private Runnable nextTask() {
+            Runnable runnable = pollTask();
+            if (runnable == null) {
+                synchronized (KeySequentialRunner.this) {
+                    runnable = pollTask();
+                    if (runnable == null) {
+                        keyRunners.remove(key);
+                    }
+                }
+            }
+            return runnable;
         }
     }
 
@@ -97,13 +92,28 @@ public final class KeySequentialRunner<Key> {
         this.exceptionHandler = exceptionHandler;
     }
 
-    public synchronized void run(Key key, Runnable task) {
-        keyRunners.computeIfAbsent(key, KeyRunner::new).run(() -> {
+    public void run(Key key, Runnable task) {
+        Runnable safeTask = () -> {
             try {
                 task.run();
             } catch (Throwable t) {
                 exceptionHandler.handleTaskException(t);
             }
-        });
+        };
+        boolean first = false;
+        KeyRunner runner;
+        synchronized (this) {
+            runner = keyRunners.get(key);
+            if (runner == null) {
+                runner = new KeyRunner(key);
+                keyRunners.put(key, runner);
+                first = true;
+            } else {
+                runner.addTask(safeTask);
+            }
+        }
+        if (first) {
+            runner.runTask(safeTask);
+        }
     }
 }
