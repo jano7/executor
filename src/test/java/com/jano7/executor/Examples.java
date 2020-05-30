@@ -56,7 +56,7 @@ public class Examples {
         Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
         Runnable runnable =
-                new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
+                new KeyRunnable<>(tradeIdA, task); // helper class delegating 'hashCode' and 'equals' to the key
 
         executor.execute(runnable);
 
@@ -84,10 +84,5 @@ public class Examples {
         // newly submitted tasks will be rejected after calling 'drain'
 
         underlyingExecutor.shutdownNow(); // safe to call 'shutdownNow' if drained as there should be no active tasks
-    }
-
-    public static void main(String[] args) throws InterruptedException {
-        basicExample();
-        boundedExecutorExample();
     }
 }

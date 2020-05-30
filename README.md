@@ -48,7 +48,7 @@ key.
 Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
 Runnable runnable =
-        new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
+        new KeyRunnable<>(tradeIdA, task); // helper class delegating 'hashCode' and 'equals' to the key
 
 executor.execute(runnable);
 ```
