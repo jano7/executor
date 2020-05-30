@@ -65,16 +65,16 @@ int maxTasks = 10;
 KeySequentialBoundedExecutor boundedExecutor =
         new KeySequentialBoundedExecutor(maxTasks, BoundedStrategy.BLOCK, underlyingExecutor);
 
-KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
+KeyRunnable<String> task = new KeyRunnable<>("my key", () -> {
     // do something
 });
 
-boundedExecutor.execute(aTask);
+boundedExecutor.execute(task);
 
 // execute more tasks ... at most 10 will be scheduled
 
 // before shutting down you can call a 'drain' method which blocks until all submitted task have been executed
-boundedExecutor.drain(aTimeout, TimeUnit.SECONDS); // returns true if drained; false if the timeout elapses
+boundedExecutor.drain(timeout, TimeUnit.SECONDS); // returns true if drained; false if the timeout elapses
 
 // newly submitted tasks will be rejected after calling 'drain'
 
