@@ -28,11 +28,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static com.jano7.executor.BoundedStrategy.BLOCK;
-
 public class Examples {
 
-    private static final long aTimeout = 30;
+    private static final long timeout = 30;
 
     public static void basicExample() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
@@ -63,25 +61,25 @@ public class Examples {
         executor.execute(runnable);
 
         underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(aTimeout, TimeUnit.SECONDS);
+        underlyingExecutor.awaitTermination(timeout, TimeUnit.SECONDS);
     }
 
     public static void boundedExecutorExample() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
         int maxTasks = 10;
         KeySequentialBoundedExecutor boundedExecutor =
-                new KeySequentialBoundedExecutor(maxTasks, BLOCK, underlyingExecutor);
+                new KeySequentialBoundedExecutor(maxTasks, BoundedStrategy.BLOCK, underlyingExecutor);
 
-        KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
+        KeyRunnable<String> task = new KeyRunnable<>("my key", () -> {
             // do something
         });
 
-        boundedExecutor.execute(aTask);
+        boundedExecutor.execute(task);
 
         // execute more tasks ... at most 10 will be scheduled
 
         // before shutting down you can call a 'drain' method which blocks until all submitted task have been executed
-        boundedExecutor.drain(aTimeout, TimeUnit.SECONDS); // returns true if drained; false if the timeout elapses
+        boundedExecutor.drain(timeout, TimeUnit.SECONDS); // returns true if drained; false if the timeout elapses
 
         // newly submitted tasks will be rejected after calling 'drain'
 

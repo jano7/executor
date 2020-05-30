@@ -63,7 +63,7 @@ configured to block the task submission when the number of tasks, which haven't 
 ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
 int maxTasks = 10;
 KeySequentialBoundedExecutor boundedExecutor =
-        new KeySequentialBoundedExecutor(maxTasks, BLOCK, underlyingExecutor);
+        new KeySequentialBoundedExecutor(maxTasks, BoundedStrategy.BLOCK, underlyingExecutor);
 
 KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
     // do something

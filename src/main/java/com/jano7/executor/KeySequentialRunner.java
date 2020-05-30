@@ -53,7 +53,7 @@ public final class KeySequentialRunner<Key> {
                     try {
                         runTask(next);
                     } catch (RejectedExecutionException e) {
-                        // complete the remaining tasks on this thread
+                        // complete the remaining tasks on this thread if the task is rejected
                         do {
                             runSafely(next);
                         } while ((next = nextTask()) != null);
@@ -108,6 +108,7 @@ public final class KeySequentialRunner<Key> {
                 if (runner == null) {
                     newRunner = new KeyRunner(key);
                     keyRunners.put(key, newRunner);
+                    // run the task outside this synchronized block as the underlying executor may block
                 } else {
                     runner.queueTask(task);
                 }
@@ -116,6 +117,7 @@ public final class KeySequentialRunner<Key> {
                 try {
                     newRunner.runTask(task);
                 } catch (RejectedExecutionException e) {
+                    // correctly handle task rejection; at this point no other tasks will be queued in this runner
                     synchronized (keyRunners) { // TODO test
                         keyRunners.remove(key);
                     }

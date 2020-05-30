@@ -43,6 +43,7 @@ public final class BoundedExecutor implements DrainableExecutor {
 
     private boolean drained = false;
 
+    // TODO test REJECT
     public BoundedExecutor(int maxTasks, BoundedStrategy onTasksExceeded, Executor underlyingExecutor) {
         this.maxTasks = maxTasks;
         this.semaphore = new Semaphore(maxTasks);
