@@ -76,33 +76,6 @@ public class KeySequentialExecutorTest {
     }
 
     @Test(timeout = 5000)
-    public void underLoad() throws InterruptedException {
-        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
-        KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
-        List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
-
-        for (int i = 0; i < 1000; ++i) {
-            final int toProcess = i;
-            executor.execute(new KeyRunnable<>(i % 2, () -> processed.add(toProcess)));
-        }
-
-        underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-
-        int previousOdd = -1;
-        int previousEven = -2;
-        for (int p : processed) {
-            if (p % 2 == 0) {
-                assertEquals(previousEven + 2, p);
-                previousEven = p;
-            } else {
-                assertEquals(previousOdd + 2, p);
-                previousOdd = p;
-            }
-        }
-    }
-
-    @Test(timeout = 5000)
     public void exceptionHandling() throws InterruptedException {
         LinkedBlockingQueue<Throwable> handledExceptions = new LinkedBlockingQueue<>();
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);

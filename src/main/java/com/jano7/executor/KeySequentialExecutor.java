@@ -39,7 +39,6 @@ public final class KeySequentialExecutor implements Executor {
 
     @Override
     public void execute(Runnable task) {
-        if (task == null) throw new NullPointerException("Task is null");
         runner.run(task, task);
     }
 }

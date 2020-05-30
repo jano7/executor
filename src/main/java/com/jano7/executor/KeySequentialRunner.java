@@ -24,50 +24,56 @@ SOFTWARE.
 package com.jano7.executor;
 
 import java.util.HashMap;
-import java.util.LinkedList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+
+import static com.jano7.executor.Util.checkNotNull;
 
 public final class KeySequentialRunner<Key> {
 
     private final class KeyRunner {
 
-        private final LinkedList<Runnable> tasks = new LinkedList<>();
+        private final ConcurrentLinkedQueue<Runnable> tasks = new ConcurrentLinkedQueue<>();
         private final Key key;
 
         KeyRunner(Key key) {
             this.key = key;
         }
 
-        synchronized void addTask(Runnable task) {
-            tasks.add(task);
-        }
-
-        private synchronized Runnable pollTask() {
-            return tasks.poll();
+        void queueTask(Runnable task) {
+            tasks.offer(task);
         }
 
         void runTask(Runnable task) {
             underlyingExecutor.execute(() -> {
-                task.run();
+                runSafely(task);
                 Runnable next = nextTask();
                 if (next != null) {
                     try {
                         runTask(next);
-                    } catch (RejectedExecutionException executorStopping) {
+                    } catch (RejectedExecutionException e) {
                         do {
-                            next.run();
+                            runSafely(next);
                         } while ((next = nextTask()) != null);
                     }
                 }
             });
         }
 
+        private void runSafely(Runnable task) {
+            try {
+                task.run();
+            } catch (Throwable t) {
+                exceptionHandler.handleTaskException(t);
+            }
+        }
+
         private Runnable nextTask() {
-            Runnable runnable = pollTask();
+            Runnable runnable = tasks.poll();
             if (runnable == null) {
-                synchronized (KeySequentialRunner.this) {
-                    runnable = pollTask();
+                synchronized (keyRunners) {
+                    runnable = tasks.poll();
                     if (runnable == null) {
                         keyRunners.remove(key);
                     }
@@ -93,27 +99,28 @@ public final class KeySequentialRunner<Key> {
     }
 
     public void run(Key key, Runnable task) {
-        Runnable safeTask = () -> {
-            try {
-                task.run();
-            } catch (Throwable t) {
-                exceptionHandler.handleTaskException(t);
-            }
-        };
-        boolean first = false;
-        KeyRunner runner;
+        checkNotNull(task);
         synchronized (this) {
-            runner = keyRunners.get(key);
-            if (runner == null) {
-                runner = new KeyRunner(key);
-                keyRunners.put(key, runner);
-                first = true;
-            } else {
-                runner.addTask(safeTask);
+            KeyRunner newRunner = null;
+            synchronized (keyRunners) {
+                KeyRunner runner = keyRunners.get(key);
+                if (runner == null) {
+                    newRunner = new KeyRunner(key);
+                    keyRunners.put(key, newRunner);
+                } else {
+                    runner.queueTask(task);
+                }
             }
-        }
-        if (first) {
-            runner.runTask(safeTask);
+            if (newRunner != null) {
+                try {
+                    newRunner.runTask(task);
+                } catch (RejectedExecutionException e) {
+                    synchronized (keyRunners) {
+                        keyRunners.remove(key);
+                    }
+                    throw e;
+                }
+            }
         }
     }
 }

@@ -24,24 +24,14 @@ SOFTWARE.
 package com.jano7.executor;
 
 import java.util.concurrent.Executor;
-import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-public final class KeySequentialBoundedExecutor implements Executor {
+public final class KeySequentialBoundedExecutor implements DrainableExecutor {
 
-    private final int maxTasks;
+    private final BoundedExecutor boundedExecutor;
 
-    private final Semaphore semaphore;
-
-    private final KeySequentialExecutor executor;
-
-    private boolean drained = false;
-
-    public KeySequentialBoundedExecutor(int maxTasks, KeySequentialExecutor executor) {
-        this.maxTasks = maxTasks;
-        this.semaphore = new Semaphore(maxTasks);
-        this.executor = executor;
+    public KeySequentialBoundedExecutor(int maxTasks, KeySequentialExecutor keySequentialExecutor) {
+        this.boundedExecutor = new BoundedExecutor(maxTasks, keySequentialExecutor);
     }
 
     public KeySequentialBoundedExecutor(int maxTasks, Executor underlyingExecutor) {
@@ -50,35 +40,11 @@ public final class KeySequentialBoundedExecutor implements Executor {
 
     @Override
     public void execute(Runnable task) {
-        if (task == null) throw new NullPointerException("Task is null");
-        synchronized (this) {
-            if (drained) {
-                throw new RejectedExecutionException(getClass().getSimpleName() + " drained");
-            } else {
-                semaphore.acquireUninterruptibly();
-            }
-        }
-        try {
-            executor.execute(new KeyRunnable<>(
-                    task,
-                    () -> {
-                        try {
-                            task.run();
-                        } finally {
-                            semaphore.release();
-                        }
-                    })
-            );
-        } catch (RejectedExecutionException e) {
-            semaphore.release();
-            throw e;
-        }
+        boundedExecutor.execute(task);
     }
 
-    public synchronized boolean drain(long timeout, TimeUnit unit) throws InterruptedException {
-        if (!drained && semaphore.tryAcquire(maxTasks, timeout, unit)) {
-            drained = true;
-        }
-        return drained;
+    @Override
+    public boolean drain(long timeout, TimeUnit unit) throws InterruptedException {
+        return boundedExecutor.drain(timeout, unit);
     }
 }

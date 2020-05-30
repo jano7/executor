@@ -81,12 +81,12 @@ underlyingExecutor.shutdownNow(); // safe to call 'shutdownNow' if drained as th
 The source code of the examples can be found [here](src/test/java/com/jano7/executor/Examples.java).
 
 A note on **thread-safety**: The library is thread-safe; i.e. methods `run`, `execute` or `drain` can be safely invoked
-from multiple threads without synchronization. 
+from multiple threads without synchronization.
 ## Maven Dependency
 ```xml
 <dependency>
   <groupId>com.jano7</groupId>
   <artifactId>executor</artifactId>
-  <version>1.0.6</version>
+  <version>1.0.7</version>
 </dependency>
 ```
