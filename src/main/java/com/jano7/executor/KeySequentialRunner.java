@@ -53,6 +53,7 @@ public final class KeySequentialRunner<Key> {
                     try {
                         runTask(next);
                     } catch (RejectedExecutionException e) {
+                        // complete the remaining tasks on this thread
                         do {
                             runSafely(next);
                         } while ((next = nextTask()) != null);
@@ -115,7 +116,7 @@ public final class KeySequentialRunner<Key> {
                 try {
                     newRunner.runTask(task);
                 } catch (RejectedExecutionException e) {
-                    synchronized (keyRunners) {
+                    synchronized (keyRunners) { // TODO test
                         keyRunners.remove(key);
                     }
                     throw e;

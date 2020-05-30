@@ -35,6 +35,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static com.jano7.executor.BoundedStrategy.BLOCK;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -103,7 +104,7 @@ public class KeySequentialRunnerTest {
     @Test(timeout = 5000)
     public void underLoadWithBoundedExecutor() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
-        BoundedExecutor boundedExecutor = new BoundedExecutor(1, underlyingExecutor);
+        BoundedExecutor boundedExecutor = new BoundedExecutor(1, underlyingExecutor, BLOCK);
         KeySequentialRunner<Integer> runner = new KeySequentialRunner<>(boundedExecutor);
         List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
 

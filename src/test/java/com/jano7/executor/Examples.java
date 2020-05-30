@@ -28,6 +28,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import static com.jano7.executor.BoundedStrategy.BLOCK;
+
 public class Examples {
 
     private static final long aTimeout = 30;
@@ -66,7 +68,8 @@ public class Examples {
     public static void boundedExecutorExample() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
         int maxTasks = 10;
-        KeySequentialBoundedExecutor boundedExecutor = new KeySequentialBoundedExecutor(maxTasks, underlyingExecutor);
+        KeySequentialBoundedExecutor boundedExecutor =
+                new KeySequentialBoundedExecutor(maxTasks, underlyingExecutor, BLOCK);
 
         KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
             // do something

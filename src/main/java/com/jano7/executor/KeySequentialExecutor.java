@@ -30,11 +30,11 @@ public final class KeySequentialExecutor implements Executor {
     private final KeySequentialRunner<Runnable> runner;
 
     public KeySequentialExecutor(Executor underlyingExecutor) {
-        this.runner = new KeySequentialRunner<>(underlyingExecutor);
+        runner = new KeySequentialRunner<>(underlyingExecutor);
     }
 
     public KeySequentialExecutor(Executor underlyingExecutor, TaskExceptionHandler exceptionHandler) {
-        this.runner = new KeySequentialRunner<>(underlyingExecutor, exceptionHandler);
+        runner = new KeySequentialRunner<>(underlyingExecutor, exceptionHandler);
     }
 
     @Override

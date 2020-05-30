@@ -28,6 +28,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import static com.jano7.executor.BoundedStrategy.BLOCK;
 import static com.jano7.executor.Util.checkNotNull;
 
 public final class BoundedExecutor implements DrainableExecutor {
@@ -38,12 +39,25 @@ public final class BoundedExecutor implements DrainableExecutor {
 
     private final Executor underlyingExecutor;
 
+    private final Runnable acquire;
+
     private boolean drained = false;
 
-    public BoundedExecutor(int maxTasks, Executor underlyingExecutor) {
+    public BoundedExecutor(int maxTasks, Executor underlyingExecutor, BoundedStrategy onTasksExceeded) {
         this.maxTasks = maxTasks;
         this.semaphore = new Semaphore(maxTasks);
         this.underlyingExecutor = underlyingExecutor;
+        this.acquire = onTasksExceeded == BLOCK ? this::blockOnTasksExceeded : this::rejectOnTasksExceeded;
+    }
+
+    private void blockOnTasksExceeded() {
+        semaphore.acquireUninterruptibly();
+    }
+
+    private void rejectOnTasksExceeded() {
+        if (!semaphore.tryAcquire()) {
+            throw new RejectedExecutionException("task limit of " + maxTasks + " exceeded");
+        }
     }
 
     @Override
@@ -51,9 +65,9 @@ public final class BoundedExecutor implements DrainableExecutor {
         checkNotNull(task);
         synchronized (this) {
             if (drained) {
-                throw new RejectedExecutionException(getClass().getSimpleName() + " drained");
+                throw new RejectedExecutionException("executor drained");
             } else {
-                semaphore.acquireUninterruptibly();
+                acquire.run();
             }
         }
         try {

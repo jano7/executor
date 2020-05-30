@@ -28,6 +28,7 @@ import org.junit.Test;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static com.jano7.executor.BoundedStrategy.BLOCK;
 import static org.junit.Assert.*;
 
 public class KeySequentialBoundedExecutorTest {
@@ -49,7 +50,7 @@ public class KeySequentialBoundedExecutorTest {
         });
         Runnable simpleTask = new KeyRunnable<>("key", completed::incrementAndGet);
 
-        KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(5, executor);
+        KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(5, executor, BLOCK);
         bounded.execute(blockingTask);
         bounded.execute(simpleTask);
         bounded.execute(simpleTask);
@@ -77,7 +78,7 @@ public class KeySequentialBoundedExecutorTest {
     public void throwExceptionWhenTaskIsNull() {
         ExecutorService underlying = Executors.newCachedThreadPool();
         KeySequentialExecutor executor = new KeySequentialExecutor(underlying);
-        Executor bounded = new KeySequentialBoundedExecutor(10, executor);
+        Executor bounded = new KeySequentialBoundedExecutor(10, executor, BLOCK);
 
         try {
             bounded.execute(null);
@@ -102,7 +103,7 @@ public class KeySequentialBoundedExecutorTest {
         };
 
         KeySequentialExecutor executor = new KeySequentialExecutor(underlying);
-        Executor bounded = new KeySequentialBoundedExecutor(1, executor);
+        Executor bounded = new KeySequentialBoundedExecutor(1, executor, BLOCK);
 
         boolean thrown = false;
         try {
@@ -121,7 +122,7 @@ public class KeySequentialBoundedExecutorTest {
     public void drain() throws InterruptedException {
         for (int i = 0; i < 1000; ++i) {
             ExecutorService underlying = Executors.newFixedThreadPool(5);
-            KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(20, underlying);
+            KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(20, underlying, BLOCK);
             CountDownLatch latch = new CountDownLatch(1);
             AtomicInteger completed = new AtomicInteger(0);
 
@@ -153,7 +154,7 @@ public class KeySequentialBoundedExecutorTest {
     @Test(timeout = 5000, expected = RejectedExecutionException.class)
     public void rejectTasksAfterDrain() throws InterruptedException {
         ExecutorService underlying = Executors.newCachedThreadPool();
-        KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(10, underlying);
+        KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(10, underlying, BLOCK);
 
         bounded.execute(() -> {
         });
@@ -170,7 +171,7 @@ public class KeySequentialBoundedExecutorTest {
     @Test(timeout = 5000)
     public void safeToCallDrainMultipleTime() throws InterruptedException {
         ExecutorService underlying = Executors.newCachedThreadPool();
-        KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(10, underlying);
+        KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(10, underlying, BLOCK);
 
         bounded.execute(() -> {
         });
