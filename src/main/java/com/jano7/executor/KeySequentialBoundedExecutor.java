@@ -30,8 +30,8 @@ public final class KeySequentialBoundedExecutor implements DrainableExecutor {
 
     private final BoundedExecutor boundedExecutor;
 
-    public KeySequentialBoundedExecutor(int maxTasks, Executor underlyingExecutor, BoundedStrategy onTasksExceeded) {
-        boundedExecutor = new BoundedExecutor(maxTasks, new KeySequentialExecutor(underlyingExecutor), onTasksExceeded);
+    public KeySequentialBoundedExecutor(int maxTasks, BoundedStrategy onTasksExceeded, Executor underlyingExecutor) {
+        boundedExecutor = new BoundedExecutor(maxTasks, onTasksExceeded, new KeySequentialExecutor(underlyingExecutor));
     }
 
     @Override

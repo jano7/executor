@@ -47,7 +47,8 @@ key.
 ```java
 Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
-Runnable runnable = new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
+Runnable runnable =
+        new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
 
 executor.execute(runnable);
 ```
@@ -56,12 +57,13 @@ The `KeySequentialExecutor` and `KeySequentialRunner` do not support back-pressu
 methods never block, instead the submitted tasks are put into a queue where they wait until executed by the underlying
 executor. In many cases this is not a problem, however in some situations it may cause an application to run out of
 memory as the number of waiting tasks grows. If you want to restrict the number of queued tasks, consider use of a
-[`KeySequentialBoundedExecutor`](src/main/java/com/jano7/executor/KeySequentialBoundedExecutor.java) which blocks the
-task submission when the number of tasks, which haven't been executed yet, hits the limit.
+[`KeySequentialBoundedExecutor`](src/main/java/com/jano7/executor/KeySequentialBoundedExecutor.java) which can be
+configured to block the task submission when the number of tasks, which haven't been executed yet, reaches the limit.
 ```java
 ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
 int maxTasks = 10;
-KeySequentialBoundedExecutor boundedExecutor = new KeySequentialBoundedExecutor(maxTasks, underlyingExecutor);
+KeySequentialBoundedExecutor boundedExecutor =
+        new KeySequentialBoundedExecutor(maxTasks, BLOCK, underlyingExecutor);
 
 KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
     // do something
@@ -87,6 +89,6 @@ from multiple threads without synchronization.
 <dependency>
   <groupId>com.jano7</groupId>
   <artifactId>executor</artifactId>
-  <version>1.0.7</version>
+  <version>2.0.0</version>
 </dependency>
 ```

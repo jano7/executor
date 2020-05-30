@@ -104,7 +104,7 @@ public class KeySequentialRunnerTest {
     @Test(timeout = 5000)
     public void underLoadWithBoundedExecutor() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
-        BoundedExecutor boundedExecutor = new BoundedExecutor(1, underlyingExecutor, BLOCK);
+        BoundedExecutor boundedExecutor = new BoundedExecutor(1, BLOCK, underlyingExecutor);
         KeySequentialRunner<Integer> runner = new KeySequentialRunner<>(boundedExecutor);
         List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
 

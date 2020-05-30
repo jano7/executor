@@ -57,7 +57,8 @@ public class Examples {
 
         Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
-        Runnable runnable = new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
+        Runnable runnable =
+                new KeyRunnable<>(tradeIdA, task); // helper class delegating hashCode and equals to the key
 
         executor.execute(runnable);
 
@@ -69,7 +70,7 @@ public class Examples {
         ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
         int maxTasks = 10;
         KeySequentialBoundedExecutor boundedExecutor =
-                new KeySequentialBoundedExecutor(maxTasks, underlyingExecutor, BLOCK);
+                new KeySequentialBoundedExecutor(maxTasks, BLOCK, underlyingExecutor);
 
         KeyRunnable<String> aTask = new KeyRunnable<>("my key", () -> {
             // do something
