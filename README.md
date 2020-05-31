@@ -53,6 +53,8 @@ Runnable runnable =
 executor.execute(runnable);
 ```
 
+TODO shutdown section
+
 The `KeySequentialExecutor` and `KeySequentialRunner` do not support back-pressure. It means that `execute` and `run`
 methods never block, instead the submitted tasks are put into a queue where they wait until executed by the underlying
 executor. In many cases this is not a problem, however in some situations it may cause an application to run out of

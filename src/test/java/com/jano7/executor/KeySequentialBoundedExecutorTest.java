@@ -25,147 +25,42 @@ package com.jano7.executor;
 
 import org.junit.Test;
 
-import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collections;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import static com.jano7.executor.BoundedStrategy.BLOCK;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class KeySequentialBoundedExecutorTest {
 
     @Test(timeout = 5000)
-    public void blocksWhenLimitReached() throws InterruptedException {
+    public void underLoad() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
-        KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
-        AtomicInteger completed = new AtomicInteger(0);
-        CountDownLatch block = new CountDownLatch(1);
-        CountDownLatch done = new CountDownLatch(1);
-        Runnable blockingTask = new KeyRunnable<>("key", () -> {
-            try {
-                block.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            completed.incrementAndGet();
-        });
-        Runnable simpleTask = new KeyRunnable<>("key", completed::incrementAndGet);
+        KeySequentialBoundedExecutor boundedExecutor = new KeySequentialBoundedExecutor(5, BLOCK, underlyingExecutor);
+        List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
 
-        KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(5, BLOCK, executor);
-        bounded.execute(blockingTask);
-        bounded.execute(simpleTask);
-        bounded.execute(simpleTask);
-        bounded.execute(simpleTask);
-        bounded.execute(simpleTask);
-
-        Thread t = new Thread(() -> {
-            bounded.execute(simpleTask);
-            done.countDown();
-        });
-        t.start();
-
-        assertFalse(done.await(1, TimeUnit.SECONDS));
-
-        block.countDown();
-        done.await();
-
-        underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-
-        assertEquals(6, completed.get());
-    }
-
-    @Test(timeout = 5000)
-    public void releaseLockOnException() {
-        Executor underlying = new Executor() {
-
-            private int count = 0;
-
-            @Override
-            public void execute(Runnable command) {
-                if (count++ == 0) {
-                    throw new RejectedExecutionException();
-                }
-                command.run();
-            }
-        };
-
-        KeySequentialExecutor executor = new KeySequentialExecutor(underlying);
-        Executor bounded = new KeySequentialBoundedExecutor(1, BLOCK, executor);
-
-        boolean thrown = false;
-        try {
-            bounded.execute(() -> {
-            });
-        } catch (RejectedExecutionException e) {
-            thrown = true;
-        }
-        bounded.execute(() -> {
-        });
-
-        assertTrue(thrown);
-    }
-
-    @Test(timeout = 10000)
-    public void drain() throws InterruptedException {
         for (int i = 0; i < 1000; ++i) {
-            ExecutorService underlying = Executors.newFixedThreadPool(5);
-            KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(20, BLOCK, underlying);
-            CountDownLatch latch = new CountDownLatch(1);
-            AtomicInteger completed = new AtomicInteger(0);
+            final int toProcess = i;
+            boundedExecutor.execute(new KeyRunnable<>(i % 2, () -> processed.add(toProcess)));
+        }
 
-            for (int j = 0; j < 10; ++j) {
-                if (j == 5) {
-                    bounded.execute(() -> {
-                        try {
-                            latch.await();
-                            completed.incrementAndGet();
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
-                        }
-                    });
-                } else {
-                    bounded.execute(completed::incrementAndGet);
-                }
+        boundedExecutor.drain(Long.MAX_VALUE, TimeUnit.SECONDS);
+        underlyingExecutor.shutdownNow();
+
+        int previousOdd = -1;
+        int previousEven = -2;
+        for (int p : processed) {
+            if (p % 2 == 0) {
+                assertEquals(previousEven + 2, p);
+                previousEven = p;
+            } else {
+                assertEquals(previousOdd + 2, p);
+                previousOdd = p;
             }
-
-            assertFalse(bounded.drain(1, TimeUnit.MILLISECONDS));
-
-            latch.countDown();
-
-            assertTrue(bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS));
-            assertEquals(10, completed.get());
-            assertTrue(underlying.shutdownNow().isEmpty());
         }
-    }
-
-    @Test(timeout = 5000, expected = RejectedExecutionException.class)
-    public void rejectTasksAfterDrain() throws InterruptedException {
-        ExecutorService underlying = Executors.newCachedThreadPool();
-        KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(10, BLOCK, underlying);
-
-        bounded.execute(() -> {
-        });
-
-        bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS);
-        try {
-            bounded.execute(() -> {
-            });
-        } finally {
-            underlying.shutdownNow();
-        }
-    }
-
-    @Test(timeout = 5000)
-    public void safeToCallDrainMultipleTime() throws InterruptedException {
-        ExecutorService underlying = Executors.newCachedThreadPool();
-        KeySequentialBoundedExecutor bounded = new KeySequentialBoundedExecutor(10, BLOCK, underlying);
-
-        bounded.execute(() -> {
-        });
-
-        assertTrue(bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS));
-        assertTrue(bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS));
-
-        underlying.shutdownNow();
     }
 }
