@@ -53,7 +53,7 @@ public final class KeySequentialRunner<Key> {
                     try {
                         runTask(next);
                     } catch (RejectedExecutionException e) {
-                        // complete the remaining tasks on this thread if the task is rejected
+                        // complete the task and the remaining ones on this thread if the execution is rejected
                         do {
                             runSafely(next);
                         } while ((next = nextTask()) != null);

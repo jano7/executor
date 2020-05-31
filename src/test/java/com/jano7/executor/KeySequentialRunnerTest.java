@@ -30,10 +30,7 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import static com.jano7.executor.BoundedStrategy.BLOCK;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -41,6 +38,134 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class KeySequentialRunnerTest {
+
+    @Test(timeout = 5000)
+    public void executeTasksInCorrectOrder() throws InterruptedException {
+        List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
+        CountDownLatch key1Latch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(1);
+
+        Runnable key1Task1 = () -> {
+            try {
+                key1Latch.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            processed.add(1);
+        };
+        Runnable key1Task2 = () -> {
+            processed.add(2);
+            doneLatch.countDown();
+        };
+        Runnable key2Task1 = () -> processed.add(3);
+        Runnable key2Task2 = () -> {
+            processed.add(4);
+            key1Latch.countDown();
+        };
+
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
+        KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
+        runner.run("key1", key1Task1);
+        runner.run("key1", key1Task2);
+        runner.run("key2", key2Task1);
+        runner.run("key2", key2Task2);
+
+        doneLatch.await();
+
+        assertEquals(3, processed.get(0).intValue());
+        assertEquals(4, processed.get(1).intValue());
+        assertEquals(1, processed.get(2).intValue());
+        assertEquals(2, processed.get(3).intValue());
+
+        underlyingExecutor.shutdownNow();
+    }
+
+    @Test(timeout = 5000)
+    public void exceptionHandling() throws InterruptedException {
+        LinkedBlockingQueue<Throwable> handledExceptions = new LinkedBlockingQueue<>();
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
+        KeySequentialRunner<String> runner = new KeySequentialRunner<>(
+                underlyingExecutor,
+                new TaskExceptionHandler() {
+                    @Override
+                    public void handleTaskException(Throwable t) {
+                        handledExceptions.offer(t);
+                    }
+                }
+        );
+        RuntimeException exception1 = new RuntimeException("test1");
+        RuntimeException exception2 = new RuntimeException("test2");
+
+        runner.run("key", () -> {
+            throw exception1;
+        });
+        runner.run("key", () -> {
+            throw exception2;
+        });
+
+        assertEquals(exception1, handledExceptions.take());
+        assertEquals(exception2, handledExceptions.take());
+
+        underlyingExecutor.shutdownNow();
+    }
+
+    @Test(timeout = 5000)
+    public void taskExecutionDuringShutdown() throws InterruptedException {
+        LinkedBlockingQueue<Integer> queue = new LinkedBlockingQueue<>();
+        CountDownLatch latch1 = new CountDownLatch(1);
+        CountDownLatch latch2 = new CountDownLatch(1);
+
+        Runnable key1Task1 = () -> {
+            try {
+                latch1.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            queue.offer(1);
+        };
+        Runnable key1Task2 = () -> {
+            queue.offer(2);
+            latch2.countDown();
+        };
+        Runnable key2Task1 = () -> {
+            try {
+                latch2.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+            queue.offer(3);
+        };
+        Runnable key2Task2 = () -> queue.offer(4);
+
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
+        KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
+        runner.run("key2", key2Task1);
+        runner.run("key2", key2Task2);
+        runner.run("key1", key1Task1);
+        runner.run("key1", key1Task2);
+
+        latch1.countDown();
+
+        underlyingExecutor.shutdown();
+        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+
+        assertEquals(1, queue.take().intValue());
+        assertEquals(2, queue.take().intValue());
+        assertEquals(3, queue.take().intValue());
+        assertEquals(4, queue.take().intValue());
+    }
+
+    @Test(timeout = 5000, expected = NullPointerException.class)
+    public void throwExceptionWhenTaskIsNull() {
+        ExecutorService underlying = Executors.newCachedThreadPool();
+        KeySequentialRunner<Integer> runner = new KeySequentialRunner<>(underlying);
+
+        try {
+            runner.run(1, null);
+        } finally {
+            underlying.shutdownNow();
+        }
+    }
 
     @Test(timeout = 5000)
     public void noMemoryLeak() throws InterruptedException, IllegalAccessException, NoSuchFieldException {

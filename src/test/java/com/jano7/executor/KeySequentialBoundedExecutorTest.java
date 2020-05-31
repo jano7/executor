@@ -74,19 +74,6 @@ public class KeySequentialBoundedExecutorTest {
         assertEquals(6, completed.get());
     }
 
-    @Test(expected = NullPointerException.class)
-    public void throwExceptionWhenTaskIsNull() {
-        ExecutorService underlying = Executors.newCachedThreadPool();
-        KeySequentialExecutor executor = new KeySequentialExecutor(underlying);
-        Executor bounded = new KeySequentialBoundedExecutor(10, BLOCK, executor);
-
-        try {
-            bounded.execute(null);
-        } finally {
-            underlying.shutdownNow();
-        }
-    }
-
     @Test(timeout = 5000)
     public void releaseLockOnException() {
         Executor underlying = new Executor() {
