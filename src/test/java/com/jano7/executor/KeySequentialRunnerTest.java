@@ -86,10 +86,10 @@ public class KeySequentialRunnerTest {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
         KeySequentialRunner<String> runner = new KeySequentialRunner<>(
                 underlyingExecutor,
-                new TaskExceptionHandler() {
+                new TaskExceptionHandler<String>() {
                     @Override
-                    public void handleTaskException(Throwable t) {
-                        handledExceptions.offer(t);
+                    public void handleTaskException(String key, Throwable t) {
+                        handledExceptions.offer(new Throwable(key, t));
                     }
                 }
         );
@@ -103,8 +103,13 @@ public class KeySequentialRunnerTest {
             throw exception2;
         });
 
-        assertEquals(exception1, handledExceptions.take());
-        assertEquals(exception2, handledExceptions.take());
+        Throwable handled1 = handledExceptions.take();
+        Throwable handled2 = handledExceptions.take();
+
+        assertEquals(exception1, handled1.getCause());
+        assertEquals("key", handled1.getMessage());
+        assertEquals(exception2, handled2.getCause());
+        assertEquals("key", handled2.getMessage());
 
         underlyingExecutor.shutdownNow();
     }

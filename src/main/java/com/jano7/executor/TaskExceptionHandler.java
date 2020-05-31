@@ -23,9 +23,11 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
-public interface TaskExceptionHandler {
+import java.util.concurrent.ExecutionException;
 
-    default void handleTaskException(Throwable t) {
-        t.printStackTrace();
+public interface TaskExceptionHandler<Key> {
+
+    default void handleTaskException(Key key, Throwable cause) {
+        new ExecutionException("exception thrown by a task for key '" + key + "'", cause).printStackTrace();
     }
 }

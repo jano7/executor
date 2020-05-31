@@ -33,7 +33,7 @@ public final class KeySequentialExecutor implements Executor {
         runner = new KeySequentialRunner<>(underlyingExecutor);
     }
 
-    public KeySequentialExecutor(Executor underlyingExecutor, TaskExceptionHandler exceptionHandler) {
+    public KeySequentialExecutor(Executor underlyingExecutor, TaskExceptionHandler<Runnable> exceptionHandler) {
         runner = new KeySequentialRunner<>(underlyingExecutor, exceptionHandler);
     }
 

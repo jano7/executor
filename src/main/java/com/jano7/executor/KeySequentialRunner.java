@@ -66,7 +66,7 @@ public final class KeySequentialRunner<Key> {
             try {
                 task.run();
             } catch (Throwable t) {
-                exceptionHandler.handleTaskException(t);
+                exceptionHandler.handleTaskException(key, t);
             }
         }
 
@@ -85,16 +85,16 @@ public final class KeySequentialRunner<Key> {
     }
 
     private final Executor underlyingExecutor;
-    private final TaskExceptionHandler exceptionHandler;
+    private final TaskExceptionHandler<Key> exceptionHandler;
     private final HashMap<Key, KeyRunner> keyRunners = new HashMap<>();
 
     public KeySequentialRunner(Executor underlyingExecutor) {
         this.underlyingExecutor = underlyingExecutor;
-        this.exceptionHandler = new TaskExceptionHandler() {
+        this.exceptionHandler = new TaskExceptionHandler<Key>() {
         };
     }
 
-    public KeySequentialRunner(Executor underlyingExecutor, TaskExceptionHandler exceptionHandler) {
+    public KeySequentialRunner(Executor underlyingExecutor, TaskExceptionHandler<Key> exceptionHandler) {
         this.underlyingExecutor = underlyingExecutor;
         this.exceptionHandler = exceptionHandler;
     }

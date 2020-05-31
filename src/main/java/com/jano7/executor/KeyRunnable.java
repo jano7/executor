@@ -54,6 +54,11 @@ public final class KeyRunnable<Key> implements Runnable {
     }
 
     @Override
+    public String toString() {
+        return Objects.toString(key);
+    }
+
+    @Override
     public void run() {
         runnable.run();
     }
