@@ -258,4 +258,9 @@ public class KeySequentialRunnerTest {
             }
         }
     }
+
+    @Test
+    public void taskRejectionHandling() {
+
+    }
 }

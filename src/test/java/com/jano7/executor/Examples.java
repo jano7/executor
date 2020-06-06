@@ -61,6 +61,11 @@ public class Examples {
         executor.execute(runnable);
 
         underlyingExecutor.shutdown();
+
+        // at this point, tasks for new keys will not be accepted however tasks for keys being currently
+        // executed/queued will still be accepted and executed which may cause 'awaitTermination' to timeout
+        // (check 'drain' method for a different behaviour)
+
         underlyingExecutor.awaitTermination(timeout, TimeUnit.SECONDS);
     }
 

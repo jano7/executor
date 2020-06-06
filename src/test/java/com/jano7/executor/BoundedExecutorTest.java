@@ -56,7 +56,6 @@ public class BoundedExecutorTest {
     public void rejectWhenLimitReached() {
         ExecutorService underlyingExecutor = Executors.newSingleThreadExecutor();
         CountDownLatch block = new CountDownLatch(1);
-        CountDownLatch done = new CountDownLatch(1);
         Runnable blockingTask = () -> {
             try {
                 block.await();

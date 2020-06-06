@@ -108,7 +108,8 @@ public final class KeySequentialRunner<Key> {
                 if (runner == null) {
                     newRunner = new KeyRunner(key);
                     keyRunners.put(key, newRunner);
-                    // run the task outside this synchronized block as the underlying executor may block
+                    // run the task outside this synchronized block as the underlying executor may block which can lead
+                    // to a deadlock when it tries to obtain this lock
                 } else {
                     runner.queueTask(task);
                 }

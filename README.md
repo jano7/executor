@@ -51,10 +51,15 @@ Runnable runnable =
         new KeyRunnable<>(tradeIdA, task); // helper class delegating 'hashCode' and 'equals' to the key
 
 executor.execute(runnable);
+
+underlyingExecutor.shutdown();
+
+// at this point, tasks for new keys will not be accepted however tasks for keys being currently
+// executed/queued will still be accepted and executed which may cause 'awaitTermination' to timeout
+// (check 'drain' method for a different behaviour)
+
+underlyingExecutor.awaitTermination(timeout, TimeUnit.SECONDS);
 ```
-
-TODO shutdown section
-
 The `KeySequentialExecutor` and `KeySequentialRunner` do not support back-pressure. It means that `execute` and `run`
 methods never block, instead the submitted tasks are put into a queue where they wait until executed by the underlying
 executor. In many cases this is not a problem, however in some situations it may cause an application to run out of
