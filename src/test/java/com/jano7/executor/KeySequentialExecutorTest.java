@@ -45,8 +45,7 @@ public class KeySequentialExecutorTest {
         Runnable key1Task1 = () -> {
             try {
                 key1Latch.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            } catch (InterruptedException ignored) {
             }
             processed.add(1);
         };

@@ -21,8 +21,7 @@ public class BoundedExecutorTest {
         Runnable blockingTask = new KeyRunnable<>("key", () -> {
             try {
                 block.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            } catch (InterruptedException ignored) {
             }
             completed.incrementAndGet();
         });
@@ -59,8 +58,7 @@ public class BoundedExecutorTest {
         Runnable blockingTask = () -> {
             try {
                 block.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            } catch (InterruptedException ignored) {
             }
         };
 
@@ -89,8 +87,7 @@ public class BoundedExecutorTest {
                         try {
                             latch.await();
                             completed.incrementAndGet();
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
+                        } catch (InterruptedException ignored) {
                         }
                     });
                 } else {

@@ -43,10 +43,16 @@ public final class KeySequentialRunner<Key> {
             this.key = key;
         }
 
+        private String rejection() {
+            return "task for the key '" + key + "' rejected";
+        }
+
         void enqueue(Runnable task) {
             synchronized (tasks) {
                 if (accept) {
                     tasks.offer(task);
+                } else {
+                    throw new RejectedExecutionException(rejection());
                 }
             }
         }
@@ -57,12 +63,6 @@ public final class KeySequentialRunner<Key> {
             }
         }
 
-        private boolean empty() {
-            synchronized (tasks) {
-                return tasks.isEmpty();
-            }
-        }
-
         synchronized void triggerRun() {
             if (notTriggered) {
                 try {
@@ -70,11 +70,11 @@ public final class KeySequentialRunner<Key> {
                     notTriggered = false;
                 } catch (RejectedExecutionException e) {
                     synchronized (keyRunners) {
-                        if (empty()) {
+                        if (tasks.isEmpty()) {
                             keyRunners.remove(key);
                         }
                     }
-                    throw new RejectedExecutionException("task for the key '" + key + "' rejected", e);
+                    throw new RejectedExecutionException(rejection(), e);
                 }
             }
         }
@@ -93,7 +93,10 @@ public final class KeySequentialRunner<Key> {
                         }
                         do {
                             runSafely(next);
-                        } while ((next = next()) != null);
+                        } while ((next = tasks.poll()) != null);
+                        synchronized (keyRunners) {
+                            keyRunners.remove(key);
+                        }
                     }
                 }
             });
@@ -111,7 +114,7 @@ public final class KeySequentialRunner<Key> {
             Runnable task = dequeue();
             if (task == null) {
                 synchronized (keyRunners) {
-                    task = dequeue();
+                    task = tasks.poll();
                     if (task == null) {
                         keyRunners.remove(key);
                     }

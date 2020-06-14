@@ -48,8 +48,7 @@ public class KeySequentialRunnerTest {
         Runnable key1Task1 = () -> {
             try {
                 key1Latch.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            } catch (InterruptedException ignored) {
             }
             processed.add(1);
         };
@@ -123,8 +122,7 @@ public class KeySequentialRunnerTest {
         Runnable key1Task1 = () -> {
             try {
                 latch1.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            } catch (InterruptedException ignored) {
             }
             queue.offer(1);
         };
@@ -135,8 +133,7 @@ public class KeySequentialRunnerTest {
         Runnable key2Task1 = () -> {
             try {
                 latch2.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            } catch (InterruptedException ignored) {
             }
             queue.offer(3);
         };
@@ -189,8 +186,7 @@ public class KeySequentialRunnerTest {
             runner.run(Integer.toString(i), () -> {
                 try {
                     latch.await();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                } catch (InterruptedException ignored) {
                 }
             });
         }
