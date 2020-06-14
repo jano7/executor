@@ -24,7 +24,7 @@ SOFTWARE.
 package com.jano7.executor;
 
 import java.util.HashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.LinkedList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -34,29 +34,55 @@ public final class KeySequentialRunner<Key> {
 
     private final class KeyRunner {
 
-        private final ConcurrentLinkedQueue<Runnable> tasks = new ConcurrentLinkedQueue<>();
+        private boolean trigger = true;
+        private boolean acceptTask = true;
+        private final LinkedList<Runnable> tasks = new LinkedList<>();
         private final Key key;
 
         KeyRunner(Key key) {
             this.key = key;
         }
 
-        void queueTask(Runnable task) {
-            tasks.offer(task);
+        void enqueue(Runnable task) {
+            synchronized (tasks) {
+                if (acceptTask) {
+                    tasks.offer(task);
+                }
+            }
         }
 
-        void runTask(Runnable task) {
+        private Runnable dequeue() {
+            synchronized (tasks) {
+                return tasks.poll();
+            }
+        }
+
+        synchronized void triggerExecution() {
+            if (trigger) {
+                try {
+                    executeNextTask();
+                    trigger = false;
+                } catch (RejectedExecutionException e) {
+                    throw new RejectedExecutionException("task for the key '" + key + "' rejected", e);
+                }
+            }
+        }
+
+        private void executeNextTask() {
             underlyingExecutor.execute(() -> {
-                runSafely(task);
-                Runnable next = nextTask();
-                if (next != null) {
+                Runnable task = nextTask();
+                if (task != null) {
+                    runSafely(task);
                     try {
-                        runTask(next);
+                        executeNextTask();
                     } catch (RejectedExecutionException e) {
-                        // complete the task and the remaining ones on this thread if the execution is rejected
+                        // complete the task and the remaining ones on this thread when the execution is rejected
+                        synchronized (tasks) {
+                            acceptTask = false;
+                        }
                         do {
-                            runSafely(next);
-                        } while ((next = nextTask()) != null);
+                            runSafely(task);
+                        } while ((task = nextTask()) != null);
                     }
                 }
             });
@@ -71,10 +97,10 @@ public final class KeySequentialRunner<Key> {
         }
 
         private Runnable nextTask() {
-            Runnable runnable = tasks.poll();
+            Runnable runnable = dequeue();
             if (runnable == null) {
                 synchronized (keyRunners) {
-                    runnable = tasks.poll();
+                    runnable = dequeue();
                     if (runnable == null) {
                         keyRunners.remove(key);
                     }
@@ -101,30 +127,15 @@ public final class KeySequentialRunner<Key> {
 
     public void run(Key key, Runnable task) {
         checkNotNull(task);
-        synchronized (this) {
-            KeyRunner newRunner = null;
-            synchronized (keyRunners) {
-                KeyRunner runner = keyRunners.get(key);
-                if (runner == null) {
-                    newRunner = new KeyRunner(key);
-                    keyRunners.put(key, newRunner);
-                    // run the task outside this synchronized block as the underlying executor may block which can lead
-                    // to a deadlock when it tries to obtain this lock
-                } else {
-                    runner.queueTask(task);
-                }
+        KeyRunner runner;
+        synchronized (keyRunners) {
+            runner = keyRunners.get(key);
+            if (runner == null) {
+                runner = new KeyRunner(key);
+                keyRunners.put(key, runner);
             }
-            if (newRunner != null) {
-                try {
-                    newRunner.runTask(task);
-                } catch (RejectedExecutionException e) {
-                    // correctly handle task rejection; at this point no other tasks will be queued in this runner
-                    synchronized (keyRunners) { // TODO test
-                        keyRunners.remove(key);
-                    }
-                    throw e;
-                }
-            }
+            runner.enqueue(task);
         }
+        runner.triggerExecution();
     }
 }
