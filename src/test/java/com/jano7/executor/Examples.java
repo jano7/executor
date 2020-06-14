@@ -62,11 +62,12 @@ public class Examples {
 
         underlyingExecutor.shutdown();
 
-        // at this point, tasks for new keys will not be accepted however tasks for keys being currently
-        // executed/queued will still be accepted and executed which may cause 'awaitTermination' to timeout
-        // (check 'drain' method for a different behaviour)
+        // at this point, tasks for new keys will be rejected; however, tasks for keys being currently executed may
+        // still be accepted (and executed)
 
         underlyingExecutor.awaitTermination(timeout, TimeUnit.SECONDS);
+
+        // if the executor terminates before a timeout, then it is guaranteed that all accepted tasks have been executed
     }
 
     public static void boundedExecutorExample() throws InterruptedException {
