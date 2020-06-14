@@ -27,7 +27,7 @@ import java.util.concurrent.ExecutionException;
 
 public interface TaskExceptionHandler<Key> {
 
-    default void handleTaskException(Key key, Throwable cause) {
+    default void onException(Key key, Throwable cause) {
         new ExecutionException("exception thrown by a task for the key '" + key + "'", cause).printStackTrace();
     }
 }

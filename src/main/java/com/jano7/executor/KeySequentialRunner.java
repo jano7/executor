@@ -24,7 +24,6 @@ SOFTWARE.
 package com.jano7.executor;
 
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -35,38 +34,23 @@ public final class KeySequentialRunner<Key> {
     private final class KeyRunner {
 
         private boolean notTriggered = true;
-        private boolean accept = true;
-        private final LinkedList<Runnable> tasks = new LinkedList<>();
+        private final TaskQueue tasks = new TaskQueue();
         private final Key key;
 
         KeyRunner(Key key) {
             this.key = key;
         }
 
-        private String rejection() {
-            return "task for the key '" + key + "' rejected";
-        }
-
         void enqueue(Runnable task) {
-            synchronized (tasks) {
-                if (accept) {
-                    tasks.offer(task);
-                } else {
-                    throw new RejectedExecutionException(rejection());
-                }
-            }
-        }
-
-        private Runnable dequeue() {
-            synchronized (tasks) {
-                return tasks.poll();
+            if (!tasks.enqueue(task)) {
+                throw new RejectedExecutionException(rejection());
             }
         }
 
         synchronized void triggerRun() {
             if (notTriggered) {
                 try {
-                    run(dequeue());
+                    run(tasks.dequeue());
                     notTriggered = false;
                 } catch (RejectedExecutionException e) {
                     synchronized (keyRunners) {
@@ -88,12 +72,10 @@ public final class KeySequentialRunner<Key> {
                         run(next);
                     } catch (RejectedExecutionException e) {
                         // complete the task and the remaining ones on this thread when the execution is rejected
-                        synchronized (tasks) {
-                            accept = false;
-                        }
+                        tasks.rejectNew();
                         do {
                             runSafely(next);
-                        } while ((next = tasks.poll()) != null);
+                        } while ((next = tasks.dequeue()) != null);
                         synchronized (keyRunners) {
                             keyRunners.remove(key);
                         }
@@ -106,21 +88,25 @@ public final class KeySequentialRunner<Key> {
             try {
                 task.run();
             } catch (Throwable t) {
-                exceptionHandler.handleTaskException(key, t);
+                exceptionHandler.onException(key, t);
             }
         }
 
         private Runnable next() {
-            Runnable task = dequeue();
+            Runnable task = tasks.dequeue();
             if (task == null) {
                 synchronized (keyRunners) {
-                    task = tasks.poll();
+                    task = tasks.dequeue();
                     if (task == null) {
                         keyRunners.remove(key);
                     }
                 }
             }
             return task;
+        }
+
+        private String rejection() {
+            return "task for the key '" + key + "' rejected";
         }
     }
 

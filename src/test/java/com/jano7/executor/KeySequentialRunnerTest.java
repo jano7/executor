@@ -87,7 +87,7 @@ public class KeySequentialRunnerTest {
                 underlyingExecutor,
                 new TaskExceptionHandler<String>() {
                     @Override
-                    public void handleTaskException(String key, Throwable t) {
+                    public void onException(String key, Throwable t) {
                         handledExceptions.offer(new Throwable(key, t));
                     }
                 }
@@ -146,9 +146,8 @@ public class KeySequentialRunnerTest {
         runner.run("key1", key1Task1);
         runner.run("key1", key1Task2);
 
-        latch1.countDown();
-
         underlyingExecutor.shutdown();
+        latch1.countDown();
         underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
 
         assertEquals(1, queue.take().intValue());
