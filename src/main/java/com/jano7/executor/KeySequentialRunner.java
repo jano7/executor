@@ -34,8 +34,8 @@ public final class KeySequentialRunner<Key> {
 
     private final class KeyRunner {
 
-        private boolean trigger = true;
-        private boolean acceptTask = true;
+        private boolean notTriggered = true;
+        private boolean accept = true;
         private final LinkedList<Runnable> tasks = new LinkedList<>();
         private final Key key;
 
@@ -45,7 +45,7 @@ public final class KeySequentialRunner<Key> {
 
         void enqueue(Runnable task) {
             synchronized (tasks) {
-                if (acceptTask) {
+                if (accept) {
                     tasks.offer(task);
                 }
             }
@@ -57,32 +57,43 @@ public final class KeySequentialRunner<Key> {
             }
         }
 
-        synchronized void triggerExecution() {
-            if (trigger) {
+        private boolean empty() {
+            synchronized (tasks) {
+                return tasks.isEmpty();
+            }
+        }
+
+        synchronized void triggerRun() {
+            if (notTriggered) {
                 try {
-                    executeNextTask();
-                    trigger = false;
+                    run(dequeue());
+                    notTriggered = false;
                 } catch (RejectedExecutionException e) {
+                    synchronized (keyRunners) {
+                        if (empty()) {
+                            keyRunners.remove(key);
+                        }
+                    }
                     throw new RejectedExecutionException("task for the key '" + key + "' rejected", e);
                 }
             }
         }
 
-        private void executeNextTask() {
+        private void run(Runnable task) {
             underlyingExecutor.execute(() -> {
-                Runnable task = nextTask();
-                if (task != null) {
-                    runSafely(task);
+                runSafely(task);
+                Runnable next = next();
+                if (next != null) {
                     try {
-                        executeNextTask();
+                        run(next);
                     } catch (RejectedExecutionException e) {
                         // complete the task and the remaining ones on this thread when the execution is rejected
                         synchronized (tasks) {
-                            acceptTask = false;
+                            accept = false;
                         }
                         do {
-                            runSafely(task);
-                        } while ((task = nextTask()) != null);
+                            runSafely(next);
+                        } while ((next = next()) != null);
                     }
                 }
             });
@@ -96,17 +107,17 @@ public final class KeySequentialRunner<Key> {
             }
         }
 
-        private Runnable nextTask() {
-            Runnable runnable = dequeue();
-            if (runnable == null) {
+        private Runnable next() {
+            Runnable task = dequeue();
+            if (task == null) {
                 synchronized (keyRunners) {
-                    runnable = dequeue();
-                    if (runnable == null) {
+                    task = dequeue();
+                    if (task == null) {
                         keyRunners.remove(key);
                     }
                 }
             }
-            return runnable;
+            return task;
         }
     }
 
@@ -136,6 +147,6 @@ public final class KeySequentialRunner<Key> {
             }
             runner.enqueue(task);
         }
-        runner.triggerExecution();
+        runner.triggerRun();
     }
 }
