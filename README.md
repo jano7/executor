@@ -59,7 +59,7 @@ underlyingExecutor.shutdown();
 
 underlyingExecutor.awaitTermination(timeout, TimeUnit.SECONDS);
 
-// if the executor terminates before a timeout, then it is guaranteed that all accepted tasks have been executed
+// if the executor terminates before a timeout, then it is guaranteed all accepted tasks have been executed
 ```
 The `KeySequentialExecutor` and `KeySequentialRunner` do not support back-pressure. It means that `execute` and `run`
 methods never block, instead the submitted tasks are put into a queue where they wait until executed by the underlying

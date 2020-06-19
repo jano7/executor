@@ -67,7 +67,7 @@ public class Examples {
 
         underlyingExecutor.awaitTermination(timeout, TimeUnit.SECONDS);
 
-        // if the executor terminates before a timeout, then it is guaranteed that all accepted tasks have been executed
+        // if the executor terminates before a timeout, then it is guaranteed all accepted tasks have been executed
     }
 
     public static void boundedExecutorExample() throws InterruptedException {

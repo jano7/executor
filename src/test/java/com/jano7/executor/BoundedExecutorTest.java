@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.jano7.executor.BoundedStrategy.BLOCK;
 import static com.jano7.executor.BoundedStrategy.REJECT;
+import static com.jano7.executor.TestUtil.doNothing;
 import static org.junit.Assert.*;
 
 public class BoundedExecutorTest {
@@ -110,13 +111,11 @@ public class BoundedExecutorTest {
         ExecutorService underlying = Executors.newCachedThreadPool();
         BoundedExecutor bounded = new BoundedExecutor(10, BLOCK, underlying);
 
-        bounded.execute(() -> {
-        });
+        bounded.execute(doNothing);
 
         bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS);
         try {
-            bounded.execute(() -> {
-            });
+            bounded.execute(doNothing);
         } finally {
             underlying.shutdownNow();
         }
@@ -127,8 +126,7 @@ public class BoundedExecutorTest {
         ExecutorService underlying = Executors.newCachedThreadPool();
         BoundedExecutor bounded = new BoundedExecutor(10, BLOCK, underlying);
 
-        bounded.execute(() -> {
-        });
+        bounded.execute(doNothing);
 
         assertTrue(bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS));
         assertTrue(bounded.drain(Long.MAX_VALUE, TimeUnit.SECONDS));
@@ -155,13 +153,11 @@ public class BoundedExecutorTest {
 
         boolean thrown = false;
         try {
-            bounded.execute(() -> {
-            });
+            bounded.execute(doNothing);
         } catch (RejectedExecutionException e) {
             thrown = true;
         }
-        bounded.execute(() -> {
-        });
+        bounded.execute(doNothing);
 
         assertTrue(thrown);
     }

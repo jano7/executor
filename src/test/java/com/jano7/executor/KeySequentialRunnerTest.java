@@ -33,9 +33,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 import static com.jano7.executor.BoundedStrategy.BLOCK;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class KeySequentialRunnerTest {
 
@@ -114,7 +112,7 @@ public class KeySequentialRunnerTest {
     }
 
     @Test(timeout = 5000)
-    public void taskExecutionDuringShutdown() throws InterruptedException {
+    public void taskExecutionDuringShutdown() throws Exception {
         LinkedBlockingQueue<Integer> queue = new LinkedBlockingQueue<>();
         CountDownLatch latch1 = new CountDownLatch(1);
         CountDownLatch latch2 = new CountDownLatch(1);
@@ -138,6 +136,8 @@ public class KeySequentialRunnerTest {
             queue.offer(3);
         };
         Runnable key2Task2 = () -> queue.offer(4);
+        Runnable key2Task3 = () -> queue.offer(5);
+        Runnable key3Task1 = () -> queue.offer(6);
 
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
         KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
@@ -147,13 +147,29 @@ public class KeySequentialRunnerTest {
         runner.run("key1", key1Task2);
 
         underlyingExecutor.shutdown();
+        try {
+            runner.run("key3", key3Task1);
+            fail("not rejected");
+        } catch (RejectedExecutionException e) {
+            assertTrue(true);
+        } catch (Throwable t) {
+            fail("invalid exception");
+        }
+        runner.run("key2", key2Task3);
+
         latch1.countDown();
+
         underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
 
         assertEquals(1, queue.take().intValue());
         assertEquals(2, queue.take().intValue());
         assertEquals(3, queue.take().intValue());
         assertEquals(4, queue.take().intValue());
+        assertEquals(5, queue.take().intValue());
+
+        Field keyRunners = KeySequentialRunner.class.getDeclaredField("keyRunners");
+        keyRunners.setAccessible(true);
+        assertTrue(((Map<?, ?>) keyRunners.get(runner)).isEmpty());
     }
 
     @Test(timeout = 5000, expected = NullPointerException.class)
@@ -166,37 +182,6 @@ public class KeySequentialRunnerTest {
         } finally {
             underlying.shutdownNow();
         }
-    }
-
-    @Test(timeout = 5000)
-    public void noMemoryLeak() throws InterruptedException, IllegalAccessException, NoSuchFieldException {
-        final int threadCount = 10;
-        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(threadCount);
-
-        KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
-
-        Field keyRunners = KeySequentialRunner.class.getDeclaredField("keyRunners");
-        keyRunners.setAccessible(true);
-
-        assertTrue(((Map<?, ?>) keyRunners.get(runner)).isEmpty());
-
-        final CountDownLatch latch = new CountDownLatch(1);
-        for (int i = threadCount; i > 0; --i) {
-            runner.run(Integer.toString(i), () -> {
-                try {
-                    latch.await();
-                } catch (InterruptedException ignored) {
-                }
-            });
-        }
-
-        assertEquals(threadCount, ((Map<?, ?>) keyRunners.get(runner)).size());
-
-        latch.countDown();
-        underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(Long.MAX_VALUE, SECONDS);
-
-        assertEquals(0, ((Map<?, ?>) keyRunners.get(runner)).size());
     }
 
     @Test(timeout = 5000)
@@ -252,10 +237,5 @@ public class KeySequentialRunnerTest {
                 previousOdd = p;
             }
         }
-    }
-
-    @Test
-    public void taskRejectionHandling() {
-
     }
 }

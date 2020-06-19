@@ -43,6 +43,7 @@ public final class KeySequentialRunner<Key> {
 
         void enqueue(Runnable task) {
             if (!tasks.enqueue(task)) {
+                System.out.println("hello"); // TODO remove
                 throw new RejectedExecutionException(rejection());
             }
         }
@@ -66,7 +67,15 @@ public final class KeySequentialRunner<Key> {
         private void run(Runnable task) {
             underlyingExecutor.execute(() -> {
                 runSafely(task);
-                Runnable next = next();
+                Runnable next = tasks.dequeue();
+                if (next == null) {
+                    synchronized (keyRunners) {
+                        next = tasks.dequeue();
+                        if (next == null) {
+                            keyRunners.remove(key);
+                        }
+                    }
+                }
                 if (next != null) {
                     try {
                         run(next);
@@ -90,19 +99,6 @@ public final class KeySequentialRunner<Key> {
             } catch (Throwable t) {
                 exceptionHandler.onException(key, t);
             }
-        }
-
-        private Runnable next() {
-            Runnable task = tasks.dequeue();
-            if (task == null) {
-                synchronized (keyRunners) {
-                    task = tasks.dequeue();
-                    if (task == null) {
-                        keyRunners.remove(key);
-                    }
-                }
-            }
-            return task;
         }
 
         private String rejection() {
