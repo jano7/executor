@@ -38,8 +38,12 @@ public final class KeyRunnable<Key> implements Runnable {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         KeyRunnable<?> that = (KeyRunnable<?>) o;
         return Objects.equals(key, that.key);
     }
@@ -47,6 +51,11 @@ public final class KeyRunnable<Key> implements Runnable {
     @Override
     public int hashCode() {
         return Objects.hashCode(key);
+    }
+
+    @Override
+    public String toString() {
+        return Objects.toString(key);
     }
 
     @Override

@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2019 Jan Gaspar
+Copyright (c) 2020 Jan Gaspar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,22 +23,16 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
-import java.util.concurrent.Executor;
+import org.junit.Test;
 
-public final class KeySequentialExecutor implements Executor {
+import static com.jano7.executor.Examples.basicExample;
+import static com.jano7.executor.Examples.boundedExecutorExample;
 
-    private final KeySequentialRunner<Runnable> runner;
+public class ExamplesTest {
 
-    public KeySequentialExecutor(Executor underlyingExecutor) {
-        runner = new KeySequentialRunner<>(underlyingExecutor);
-    }
-
-    public KeySequentialExecutor(Executor underlyingExecutor, TaskExceptionHandler<Runnable> exceptionHandler) {
-        runner = new KeySequentialRunner<>(underlyingExecutor, exceptionHandler);
-    }
-
-    @Override
-    public void execute(Runnable task) {
-        runner.run(task, task);
+    @Test(timeout = 5000)
+    public void examples() throws InterruptedException {
+        basicExample();
+        boundedExecutorExample();
     }
 }

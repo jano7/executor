@@ -23,93 +23,114 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+
+import static com.jano7.executor.Util.checkNotNull;
 
 public final class KeySequentialRunner<Key> {
 
     private final class KeyRunner {
 
-        private final LinkedList<Runnable> tasks = new LinkedList<>();
-        private boolean active = false;
+        private boolean notTriggered = true;
+        private final TaskQueue tasks = new TaskQueue();
+        private final Key key;
 
-        public synchronized void run(Runnable task) {
-            if (active) {
-                tasks.addFirst(task);
-            } else {
-                active = true;
-                runTask(task);
+        KeyRunner(Key key) {
+            this.key = key;
+        }
+
+        void enqueue(Runnable task) {
+            if (!tasks.enqueue(task)) {
+                throw new RejectedExecutionException(rejection());
             }
         }
 
-        private void runTask(Runnable task) {
+        synchronized void triggerRun() {
+            if (notTriggered) {
+                try {
+                    run(tasks.dequeue());
+                    notTriggered = false;
+                } catch (RejectedExecutionException e) {
+                    synchronized (keyRunners) {
+                        if (tasks.isEmpty()) {
+                            keyRunners.remove(key);
+                        }
+                    }
+                    throw new RejectedExecutionException(rejection(), e);
+                }
+            }
+        }
+
+        private void run(Runnable task) {
             underlyingExecutor.execute(() -> {
-                task.run();
-                Runnable next = nextTask();
+                runSafely(task);
+                Runnable next = tasks.dequeue();
+                if (next == null) {
+                    synchronized (keyRunners) {
+                        next = tasks.dequeue();
+                        if (next == null) {
+                            keyRunners.remove(key);
+                        }
+                    }
+                }
                 if (next != null) {
                     try {
-                        runTask(next);
-                    } catch (RejectedExecutionException executorStopping) {
+                        run(next);
+                    } catch (RejectedExecutionException e) {
+                        // complete the task and the remaining ones on this thread when the execution is rejected
+                        tasks.rejectNew();
                         do {
-                            next.run();
-                        } while ((next = nextTask()) != null);
+                            runSafely(next);
+                        } while ((next = tasks.dequeue()) != null);
+                        synchronized (keyRunners) {
+                            keyRunners.remove(key);
+                        }
                     }
                 }
             });
         }
 
-        private synchronized Runnable nextTask() {
-            Runnable runnable = tasks.pollLast();
-            if (runnable == null) {
-                active = false;
+        private void runSafely(Runnable task) {
+            try {
+                task.run();
+            } catch (Throwable t) {
+                exceptionHandler.onException(key, t);
             }
-            return runnable;
         }
 
-        public synchronized boolean isActive() {
-            return active;
+        private String rejection() {
+            return "task for the key '" + key + "' rejected";
         }
     }
 
     private final Executor underlyingExecutor;
-    private final TaskExceptionHandler exceptionHandler;
+    private final TaskExceptionHandler<Key> exceptionHandler;
     private final HashMap<Key, KeyRunner> keyRunners = new HashMap<>();
 
     public KeySequentialRunner(Executor underlyingExecutor) {
         this.underlyingExecutor = underlyingExecutor;
-        this.exceptionHandler = new TaskExceptionHandler() {
+        this.exceptionHandler = new TaskExceptionHandler<Key>() {
         };
     }
 
-    public KeySequentialRunner(Executor underlyingExecutor, TaskExceptionHandler exceptionHandler) {
+    public KeySequentialRunner(Executor underlyingExecutor, TaskExceptionHandler<Key> exceptionHandler) {
         this.underlyingExecutor = underlyingExecutor;
         this.exceptionHandler = exceptionHandler;
     }
 
-    public synchronized void run(Key key, Runnable task) {
-        KeyRunner runner = keyRunners.get(key);
-        if (runner == null) {
-            runner = new KeyRunner();
-            keyRunners.put(key, runner);
-        }
-        runner.run(() -> {
-            try {
-                task.run();
-            } catch (Throwable t) {
-                exceptionHandler.handleTaskException(t);
+    public void run(Key key, Runnable task) {
+        checkNotNull(task);
+        KeyRunner runner;
+        synchronized (keyRunners) {
+            runner = keyRunners.get(key);
+            if (runner == null) {
+                runner = new KeyRunner(key);
+                keyRunners.put(key, runner);
             }
-        });
-        scavengeInactiveRunners();
-    }
-
-    private void scavengeInactiveRunners() {
-        for (Key key : new ArrayList<>(keyRunners.keySet())) {
-            if (!keyRunners.get(key).isActive()) {
-                keyRunners.remove(key);
-            }
+            runner.enqueue(task);
         }
+        runner.triggerRun();
     }
 }

@@ -28,7 +28,9 @@ import org.junit.Test;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.junit.Assert.assertEquals;
 
@@ -43,8 +45,7 @@ public class KeySequentialExecutorTest {
         Runnable key1Task1 = () -> {
             try {
                 key1Latch.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+            } catch (InterruptedException ignored) {
             }
             processed.add(1);
         };
@@ -58,7 +59,7 @@ public class KeySequentialExecutorTest {
             key1Latch.countDown();
         };
 
-        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
+        ExecutorService underlyingExecutor = Executors.newCachedThreadPool();
         KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
         executor.execute(new KeyRunnable<>("key1", key1Task1));
         executor.execute(new KeyRunnable<>("key1", key1Task2));
@@ -73,123 +74,5 @@ public class KeySequentialExecutorTest {
         assertEquals(2, processed.get(3).intValue());
 
         underlyingExecutor.shutdownNow();
-    }
-
-    @Test(timeout = 5000)
-    public void underLoad() throws InterruptedException {
-        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
-        KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
-        List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
-
-        for (int i = 0; i < 1000; ++i) {
-            final int toProcess = i;
-            executor.execute(new KeyRunnable<>(i % 2, () -> processed.add(toProcess)));
-        }
-
-        underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-
-        int previousOdd = -1;
-        int previousEven = -2;
-        for (int p : processed) {
-            if (p % 2 == 0) {
-                assertEquals(previousEven + 2, p);
-                previousEven = p;
-            } else {
-                assertEquals(previousOdd + 2, p);
-                previousOdd = p;
-            }
-        }
-    }
-
-    @Test(timeout = 5000)
-    public void exceptionHandling() throws InterruptedException {
-        LinkedBlockingQueue<Throwable> handledExceptions = new LinkedBlockingQueue<>();
-        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
-        KeySequentialExecutor executor = new KeySequentialExecutor(
-                underlyingExecutor,
-                new TaskExceptionHandler() {
-                    @Override
-                    public void handleTaskException(Throwable t) {
-                        handledExceptions.offer(t);
-                    }
-                }
-        );
-        RuntimeException exception1 = new RuntimeException("test1");
-        RuntimeException exception2 = new RuntimeException("test2");
-
-        executor.execute(
-                new KeyRunnable<>("key", () -> {
-                    throw exception1;
-                })
-        );
-        executor.execute(
-                new KeyRunnable<>("key", () -> {
-                    throw exception2;
-                })
-        );
-
-        assertEquals(exception1, handledExceptions.take());
-        assertEquals(exception2, handledExceptions.take());
-
-        underlyingExecutor.shutdownNow();
-    }
-
-    @Test(timeout = 5000)
-    public void taskExecutionDuringShutdown() throws InterruptedException {
-        LinkedBlockingQueue<Integer> queue = new LinkedBlockingQueue<>();
-        CountDownLatch latch1 = new CountDownLatch(1);
-        CountDownLatch latch2 = new CountDownLatch(1);
-
-        Runnable key1Task1 = () -> {
-            try {
-                latch1.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            queue.offer(1);
-        };
-        Runnable key1Task2 = () -> {
-            queue.offer(2);
-            latch2.countDown();
-        };
-        Runnable key2Task1 = () -> {
-            try {
-                latch2.await();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            }
-            queue.offer(3);
-        };
-        Runnable key2Task2 = () -> queue.offer(4);
-
-        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
-        KeySequentialExecutor executor = new KeySequentialExecutor(underlyingExecutor);
-        executor.execute(new KeyRunnable<>("key2", key2Task1));
-        executor.execute(new KeyRunnable<>("key2", key2Task2));
-        executor.execute(new KeyRunnable<>("key1", key1Task1));
-        executor.execute(new KeyRunnable<>("key1", key1Task2));
-
-        latch1.countDown();
-
-        underlyingExecutor.shutdown();
-        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
-
-        assertEquals(1, queue.take().intValue());
-        assertEquals(2, queue.take().intValue());
-        assertEquals(3, queue.take().intValue());
-        assertEquals(4, queue.take().intValue());
-    }
-
-    @Test(timeout = 5000, expected = NullPointerException.class)
-    public void throwExceptionWhenTaskIsNull() {
-        ExecutorService underlying = Executors.newCachedThreadPool();
-        Executor executor = new KeySequentialExecutor(underlying);
-
-        try {
-            executor.execute(null);
-        } finally {
-            underlying.shutdownNow();
-        }
     }
 }

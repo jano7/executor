@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2019 Jan Gaspar
+Copyright (c) 2020 Jan Gaspar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -23,22 +23,29 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
-import java.util.concurrent.Executor;
+import java.util.LinkedList;
 
-public final class KeySequentialExecutor implements Executor {
+class TaskQueue {
 
-    private final KeySequentialRunner<Runnable> runner;
+    private boolean accept = true;
+    private final LinkedList<Runnable> tasks = new LinkedList<>();
 
-    public KeySequentialExecutor(Executor underlyingExecutor) {
-        runner = new KeySequentialRunner<>(underlyingExecutor);
+    synchronized boolean enqueue(Runnable task) {
+        if (accept) {
+            return tasks.offer(task);
+        }
+        return false;
     }
 
-    public KeySequentialExecutor(Executor underlyingExecutor, TaskExceptionHandler<Runnable> exceptionHandler) {
-        runner = new KeySequentialRunner<>(underlyingExecutor, exceptionHandler);
+    synchronized Runnable dequeue() {
+        return tasks.poll();
     }
 
-    @Override
-    public void execute(Runnable task) {
-        runner.run(task, task);
+    synchronized boolean isEmpty() {
+        return tasks.isEmpty();
+    }
+
+    synchronized void rejectNew() {
+        accept = false;
     }
 }
