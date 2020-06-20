@@ -51,16 +51,6 @@ public class TaskQueueTest {
     }
 
     @Test(timeout = 5000)
-    public void empty() {
-        TaskQueue taskQueue = new TaskQueue();
-
-        assertTrue(taskQueue.isEmpty());
-        taskQueue.enqueue(new KeyRunnable<>(0, doSomething));
-
-        assertFalse(taskQueue.isEmpty());
-    }
-
-    @Test(timeout = 5000)
     public void reject() throws InterruptedException {
         TaskQueue taskQueue = new TaskQueue();
 
@@ -69,16 +59,18 @@ public class TaskQueueTest {
                 Thread.sleep(200);
             } catch (InterruptedException ignored) {
             }
-            taskQueue.rejectNew();
+            taskQueue.rejectNew(); // TODO test the enqueued tasks
         });
         rejectTrigger.start();
 
         while (true) {
             if (!taskQueue.enqueue(new KeyRunnable<>(Math.random(), doSomething))) {
                 assertTrue(true);
-                return;
+                break;
             }
             Thread.sleep(100);
         }
+
+        assertNull(taskQueue.dequeue());
     }
 }

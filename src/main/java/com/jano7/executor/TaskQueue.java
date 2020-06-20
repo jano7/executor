@@ -24,6 +24,7 @@ SOFTWARE.
 package com.jano7.executor;
 
 import java.util.LinkedList;
+import java.util.List;
 
 class TaskQueue {
 
@@ -41,11 +42,10 @@ class TaskQueue {
         return tasks.poll();
     }
 
-    synchronized boolean isEmpty() {
-        return tasks.isEmpty();
-    }
-
-    synchronized void rejectNew() {
+    synchronized List<Runnable> rejectNew() {
+        List<Runnable> queued = new LinkedList<>(tasks);
+        tasks.clear();
         accept = false;
+        return queued;
     }
 }
