@@ -25,7 +25,7 @@ package com.jano7.executor;
 
 import org.junit.Test;
 
-import static com.jano7.executor.TestUtil.doNothing;
+import static com.jano7.executor.TestUtil.doSomething;
 import static org.junit.Assert.*;
 
 public class TaskQueueTest {
@@ -35,7 +35,7 @@ public class TaskQueueTest {
         TaskQueue taskQueue = new TaskQueue();
         Thread enqueueThread = new Thread(() -> {
             for (int i = 0; i < 100; ++i) {
-                taskQueue.enqueue(new KeyRunnable<>(i, doNothing));
+                taskQueue.enqueue(new KeyRunnable<>(i, doSomething));
             }
         });
         enqueueThread.start();
@@ -44,7 +44,7 @@ public class TaskQueueTest {
             if (task == null) {
                 Thread.sleep(100);
             } else {
-                assertEquals(task, new KeyRunnable<>(i, doNothing));
+                assertEquals(task, new KeyRunnable<>(i, doSomething));
                 ++i;
             }
         }
@@ -55,7 +55,7 @@ public class TaskQueueTest {
         TaskQueue taskQueue = new TaskQueue();
 
         assertTrue(taskQueue.isEmpty());
-        taskQueue.enqueue(new KeyRunnable<>(0, doNothing));
+        taskQueue.enqueue(new KeyRunnable<>(0, doSomething));
 
         assertFalse(taskQueue.isEmpty());
     }
@@ -67,14 +67,15 @@ public class TaskQueueTest {
         Thread rejectTrigger = new Thread(() -> {
             try {
                 Thread.sleep(200);
-            } catch (InterruptedException e) {
+            } catch (InterruptedException ignored) {
             }
             taskQueue.rejectNew();
         });
         rejectTrigger.start();
 
         while (true) {
-            if (!taskQueue.enqueue(new KeyRunnable<>(Math.random(), doNothing))) {
+            if (!taskQueue.enqueue(new KeyRunnable<>(Math.random(), doSomething))) {
+                assertTrue(true);
                 return;
             }
             Thread.sleep(100);

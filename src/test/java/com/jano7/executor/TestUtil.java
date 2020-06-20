@@ -25,6 +25,6 @@ package com.jano7.executor;
 
 public class TestUtil {
 
-    public static final Runnable doNothing = () -> {
+    public static final Runnable doSomething = () -> {
     };
 }

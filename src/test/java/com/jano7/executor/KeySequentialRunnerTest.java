@@ -33,6 +33,7 @@ import java.util.Map;
 import java.util.concurrent.*;
 
 import static com.jano7.executor.BoundedStrategy.BLOCK;
+import static com.jano7.executor.TestUtil.doSomething;
 import static org.junit.Assert.*;
 
 public class KeySequentialRunnerTest {
@@ -113,6 +114,8 @@ public class KeySequentialRunnerTest {
 
     @Test(timeout = 5000)
     public void taskExecutionDuringShutdown() throws Exception {
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
+        KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
         LinkedBlockingQueue<Integer> queue = new LinkedBlockingQueue<>();
         CountDownLatch latch1 = new CountDownLatch(1);
         CountDownLatch latch2 = new CountDownLatch(1);
@@ -136,30 +139,44 @@ public class KeySequentialRunnerTest {
             queue.offer(3);
         };
         Runnable key2Task2 = () -> queue.offer(4);
-        Runnable key2Task3 = () -> queue.offer(5);
-        Runnable key3Task1 = () -> queue.offer(6);
+        Runnable key2Task3 = () -> {
+            try {
+                runner.run("key2", doSomething);
+            } catch (RejectedExecutionException e) {
+                queue.offer(5);
+            }
+        };
 
-        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
-        KeySequentialRunner<String> runner = new KeySequentialRunner<>(underlyingExecutor);
         runner.run("key2", key2Task1);
         runner.run("key2", key2Task2);
         runner.run("key1", key1Task1);
         runner.run("key1", key1Task2);
 
         underlyingExecutor.shutdown();
+
+        runner.run("key2", key2Task3);
+
         try {
-            runner.run("key3", key3Task1);
+            runner.run("key3", doSomething);
             fail("not rejected");
         } catch (RejectedExecutionException e) {
             assertTrue(true);
         } catch (Throwable t) {
             fail("invalid exception");
         }
-        runner.run("key2", key2Task3);
 
         latch1.countDown();
 
         underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+
+        try {
+            runner.run("key1", doSomething);
+            fail("not rejected");
+        } catch (RejectedExecutionException e) {
+            assertTrue(true);
+        } catch (Throwable t) {
+            fail("invalid exception");
+        }
 
         assertEquals(1, queue.take().intValue());
         assertEquals(2, queue.take().intValue());

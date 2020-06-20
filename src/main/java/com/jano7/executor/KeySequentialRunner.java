@@ -43,7 +43,6 @@ public final class KeySequentialRunner<Key> {
 
         void enqueue(Runnable task) {
             if (!tasks.enqueue(task)) {
-                System.out.println("hello"); // TODO remove
                 throw new RejectedExecutionException(rejection());
             }
         }
