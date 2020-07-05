@@ -31,6 +31,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.jano7.executor.BoundedStrategy.BLOCK;
 import static com.jano7.executor.TestUtil.doSomething;
@@ -254,5 +255,56 @@ public class KeySequentialRunnerTest {
                 previousOdd = p;
             }
         }
+    }
+
+    @Test(timeout = 5000)
+    public void rejectHandling() throws InterruptedException {
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
+        AtomicInteger counter = new AtomicInteger(0);
+        Executor rejectingExecutor = task -> {
+            if (counter.incrementAndGet() % 2 == 0) {
+                underlyingExecutor.execute(task);
+            } else {
+                throw new RejectedExecutionException();
+            }
+        };
+        KeySequentialRunner<Integer> runner = new KeySequentialRunner<>(rejectingExecutor);
+        int keys = 100;
+        int tasksPerKey = 5;
+        List<Integer> submittedTasks = Collections.synchronizedList(new LinkedList<>());
+        List<Integer> completedTasks = Collections.synchronizedList(new LinkedList<>());
+        List<Thread> submittingThreads = new LinkedList<>();
+        for (int key = 0; key < keys; ++key) {
+            for (int i = 0; i < tasksPerKey; ++i) {
+                submittingThreads.add(
+                        submittingThread(key, (key * tasksPerKey) + i, submittedTasks, completedTasks, runner)
+                );
+            }
+        }
+        submittingThreads.forEach(Thread::start);
+        submittingThreads.forEach(thread -> {
+            try {
+                thread.join();
+            } catch (InterruptedException ignored) {
+            }
+        });
+        underlyingExecutor.shutdown();
+        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+
+        assertTrue(submittedTasks.containsAll(completedTasks) && completedTasks.containsAll(submittedTasks));
+    }
+
+    private Thread submittingThread(int key,
+                                    int taskId,
+                                    List<Integer> submittedTasks,
+                                    List<Integer> completedTasks,
+                                    KeySequentialRunner<Integer> runner) {
+        return new Thread(() -> {
+            try {
+                runner.run(key, () -> completedTasks.add(taskId));
+                submittedTasks.add(taskId);
+            } catch (RejectedExecutionException ignored) {
+            }
+        });
     }
 }

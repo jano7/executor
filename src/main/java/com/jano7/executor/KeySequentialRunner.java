@@ -24,6 +24,7 @@ SOFTWARE.
 package com.jano7.executor;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 
@@ -49,14 +50,17 @@ public final class KeySequentialRunner<Key> {
 
         synchronized void triggerRun() {
             if (notTriggered) {
+                Runnable task = tasks.dequeue();
+                if (task == null) {
+                    throw new RejectedExecutionException(rejection());
+                }
                 try {
-                    run(tasks.dequeue());
+                    run(task);
                     notTriggered = false;
                 } catch (RejectedExecutionException e) {
+                    tasks.rejectNew();
                     synchronized (keyRunners) {
-                        if (tasks.isEmpty()) {
-                            keyRunners.remove(key);
-                        }
+                        keyRunners.remove(key);
                     }
                     throw new RejectedExecutionException(rejection(), e);
                 }
@@ -79,11 +83,12 @@ public final class KeySequentialRunner<Key> {
                     try {
                         run(next);
                     } catch (RejectedExecutionException e) {
-                        // complete the task and the remaining ones on this thread when the execution is rejected
-                        tasks.rejectNew();
-                        do {
-                            runSafely(next);
-                        } while ((next = tasks.dequeue()) != null);
+                        List<Runnable> accepted = tasks.rejectNew();
+                        // complete the task and the queued ones on this thread when the execution is rejected
+                        runSafely(next);
+                        for (Runnable queued : accepted) {
+                            runSafely(queued);
+                        }
                         synchronized (keyRunners) {
                             keyRunners.remove(key);
                         }
