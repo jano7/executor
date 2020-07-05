@@ -3,7 +3,7 @@
 
     <groupId>com.jano7</groupId>
     <artifactId>executor</artifactId>
-    <version>2.0.1-SNAPSHOT</version>
+    <version>2.0.1</version>
 
     <name>Java Key Sequential Executor</name>
     <description>This small library provides an optimized solution to a problem where tasks for a particular key need to
