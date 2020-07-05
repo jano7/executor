@@ -51,8 +51,7 @@ public final class KeySequentialRunner<Key> {
         synchronized void triggerRun() {
             if (notTriggered) {
                 Runnable task = tasks.dequeue();
-                if (task == null) { // TODO test
-                    System.out.println("hello");
+                if (task == null) {
                     throw new RejectedExecutionException(rejection());
                 }
                 try {

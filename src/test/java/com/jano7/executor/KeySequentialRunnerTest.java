@@ -263,60 +263,46 @@ public class KeySequentialRunnerTest {
         AtomicInteger counter = new AtomicInteger(0);
         Executor rejectingExecutor = task -> {
             if (counter.incrementAndGet() % 2 == 0) {
-                System.out.println("executing");
                 underlyingExecutor.execute(task);
             } else {
                 throw new RejectedExecutionException();
             }
         };
         KeySequentialRunner<Integer> runner = new KeySequentialRunner<>(rejectingExecutor);
-        int keys = 10;
-        int tasksPerKey = 3;
-        int threads = keys * tasksPerKey;
-        CountDownLatch runningThreads = new CountDownLatch(threads);
-        CountDownLatch threadTrigger = new CountDownLatch(1);
-        List<Integer> keyList = Collections.synchronizedList(new LinkedList<>());
+        int keys = 100;
+        int tasksPerKey = 5;
+        List<Integer> submittedTasks = Collections.synchronizedList(new LinkedList<>());
+        List<Integer> completedTasks = Collections.synchronizedList(new LinkedList<>());
         List<Thread> submittingThreads = new LinkedList<>();
         for (int key = 0; key < keys; ++key) {
             for (int i = 0; i < tasksPerKey; ++i) {
-                submittingThreads.add(submittingThread(key, keyList, runningThreads, threadTrigger, runner));
+                submittingThreads.add(
+                        submittingThread(key, (key * tasksPerKey) + i, submittedTasks, completedTasks, runner)
+                );
             }
         }
         submittingThreads.forEach(Thread::start);
-        runningThreads.await();
-        threadTrigger.countDown();
         submittingThreads.forEach(thread -> {
             try {
                 thread.join();
             } catch (InterruptedException ignored) {
             }
         });
-        for (int key = 0; key < keys; ++key) {
-            int submitted = 0;
-            for (int i : keyList) {
-                if (i == key) {
-                    ++submitted;
-                }
-            }
-            assertTrue(submitted == tasksPerKey || submitted == 0);
-            System.out.println(submitted);
-        }
-        underlyingExecutor.shutdownNow();
+        underlyingExecutor.shutdown();
+        underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
+
+        assertTrue(submittedTasks.containsAll(completedTasks) && completedTasks.containsAll(submittedTasks));
     }
 
-    public Thread submittingThread(Integer key,
-                                   List<Integer> keyList,
-                                   CountDownLatch runningThreads,
-                                   CountDownLatch threadTrigger,
-                                   KeySequentialRunner<Integer> runner) {
+    private Thread submittingThread(int key,
+                                    int taskId,
+                                    List<Integer> submittedTasks,
+                                    List<Integer> completedTasks,
+                                    KeySequentialRunner<Integer> runner) {
         return new Thread(() -> {
-            runningThreads.countDown();
             try {
-                threadTrigger.await();
-            } catch (InterruptedException ignored) {
-            }
-            try {
-                runner.run(key, () -> keyList.add(key));
+                runner.run(key, () -> completedTasks.add(taskId));
+                submittedTasks.add(taskId);
             } catch (RejectedExecutionException ignored) {
             }
         });
