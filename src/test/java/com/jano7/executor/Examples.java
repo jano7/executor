@@ -55,19 +55,20 @@ public class Examples {
 
         Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
-        Runnable runnable =
-                new KeyRunnable<>(tradeIdA, task); // helper class delegating 'hashCode' and 'equals' to the key
+        // KeyRunnable is a helper class delegating 'hashCode' and 'equals' to the key
+        Runnable runnable = new KeyRunnable<>(tradeIdA, task);
 
         executor.execute(runnable);
 
         underlyingExecutor.shutdown();
 
-        // at this point, tasks for new keys will be rejected; however, tasks for keys being currently executed may
-        // still be accepted (and executed)
+        // at this point, tasks for new keys will be rejected
+        // however, tasks for keys being currently executed may still be accepted (and executed)
 
         underlyingExecutor.awaitTermination(timeout, TimeUnit.SECONDS);
 
-        // if the executor terminates before a timeout, then it is guaranteed all accepted tasks have been executed
+        // if the executor terminates before a timeout, then it is guaranteed that all accepted
+        // tasks have been executed
     }
 
     public static void boundedExecutorExample() throws InterruptedException {
@@ -81,14 +82,17 @@ public class Examples {
         });
 
         boundedExecutor.execute(task);
-
         // execute more tasks ... at most 10 will be scheduled
 
-        // before shutting down you can call a 'drain' method which blocks until all submitted task have been executed
-        boundedExecutor.drain(timeout, TimeUnit.SECONDS); // returns true if drained; false if the timeout elapses
+        // before shutting down you can call a 'drain' method
+        // which blocks until all submitted task have been executed
+
+        // returns true if drained; false if the timeout elapses
+        boundedExecutor.drain(timeout, TimeUnit.SECONDS);
 
         // newly submitted tasks will be rejected after calling 'drain'
 
-        underlyingExecutor.shutdownNow(); // safe to call 'shutdownNow' if drained as there should be no active tasks
+        // safe to call 'shutdownNow' if drained as there should be no active tasks
+        underlyingExecutor.shutdownNow();
     }
 }

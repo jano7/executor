@@ -23,6 +23,7 @@ SOFTWARE.
 */
 package com.jano7.executor;
 
+import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -43,7 +44,7 @@ class TaskQueue {
     }
 
     synchronized List<Runnable> rejectNew() {
-        List<Runnable> queued = new LinkedList<>(tasks);
+        List<Runnable> queued = new ArrayList<>(tasks);
         tasks.clear();
         accept = false;
         return queued;

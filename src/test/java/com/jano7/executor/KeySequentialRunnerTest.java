@@ -31,6 +31,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.jano7.executor.BoundedStrategy.BLOCK;
 import static com.jano7.executor.TestUtil.doSomething;
@@ -254,5 +255,70 @@ public class KeySequentialRunnerTest {
                 previousOdd = p;
             }
         }
+    }
+
+    @Test(timeout = 5000)
+    public void rejectHandling() throws InterruptedException {
+        ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
+        AtomicInteger counter = new AtomicInteger(0);
+        Executor rejectingExecutor = task -> {
+            if (counter.incrementAndGet() % 2 == 0) {
+                System.out.println("executing");
+                underlyingExecutor.execute(task);
+            } else {
+                throw new RejectedExecutionException();
+            }
+        };
+        KeySequentialRunner<Integer> runner = new KeySequentialRunner<>(rejectingExecutor);
+        int keys = 10;
+        int tasksPerKey = 3;
+        int threads = keys * tasksPerKey;
+        CountDownLatch runningThreads = new CountDownLatch(threads);
+        CountDownLatch threadTrigger = new CountDownLatch(1);
+        List<Integer> keyList = Collections.synchronizedList(new LinkedList<>());
+        List<Thread> submittingThreads = new LinkedList<>();
+        for (int key = 0; key < keys; ++key) {
+            for (int i = 0; i < tasksPerKey; ++i) {
+                submittingThreads.add(submittingThread(key, keyList, runningThreads, threadTrigger, runner));
+            }
+        }
+        submittingThreads.forEach(Thread::start);
+        runningThreads.await();
+        threadTrigger.countDown();
+        submittingThreads.forEach(thread -> {
+            try {
+                thread.join();
+            } catch (InterruptedException ignored) {
+            }
+        });
+        for (int key = 0; key < keys; ++key) {
+            int submitted = 0;
+            for (int i : keyList) {
+                if (i == key) {
+                    ++submitted;
+                }
+            }
+            assertTrue(submitted == tasksPerKey || submitted == 0);
+            System.out.println(submitted);
+        }
+        underlyingExecutor.shutdownNow();
+    }
+
+    public Thread submittingThread(Integer key,
+                                   List<Integer> keyList,
+                                   CountDownLatch runningThreads,
+                                   CountDownLatch threadTrigger,
+                                   KeySequentialRunner<Integer> runner) {
+        return new Thread(() -> {
+            runningThreads.countDown();
+            try {
+                threadTrigger.await();
+            } catch (InterruptedException ignored) {
+            }
+            try {
+                runner.run(key, () -> keyList.add(key));
+            } catch (RejectedExecutionException ignored) {
+            }
+        });
     }
 }

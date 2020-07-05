@@ -47,19 +47,20 @@ key.
 ```java
 Executor executor = new KeySequentialExecutor(underlyingExecutor);
 
-Runnable runnable =
-        new KeyRunnable<>(tradeIdA, task); // helper class delegating 'hashCode' and 'equals' to the key
+// KeyRunnable is a helper class delegating 'hashCode' and 'equals' to the key
+Runnable runnable = new KeyRunnable<>(tradeIdA, task);
 
 executor.execute(runnable);
 
 underlyingExecutor.shutdown();
 
-// at this point, tasks for new keys will be rejected; however, tasks for keys being currently executed may
-// still be accepted (and executed)
+// at this point, tasks for new keys will be rejected
+// however, tasks for keys being currently executed may still be accepted (and executed)
 
 underlyingExecutor.awaitTermination(timeout, TimeUnit.SECONDS);
 
-// if the executor terminates before a timeout, then it is guaranteed all accepted tasks have been executed
+// if the executor terminates before a timeout, then it is guaranteed that all accepted
+// tasks have been executed
 ```
 The `KeySequentialExecutor` and `KeySequentialRunner` do not support back-pressure. It means that `execute` and `run`
 methods never block, instead the submitted tasks are put into a queue where they wait until executed by the underlying
@@ -78,15 +79,18 @@ KeyRunnable<String> task = new KeyRunnable<>("my key", () -> {
 });
 
 boundedExecutor.execute(task);
-
 // execute more tasks ... at most 10 will be scheduled
 
-// before shutting down you can call a 'drain' method which blocks until all submitted task have been executed
-boundedExecutor.drain(timeout, TimeUnit.SECONDS); // returns true if drained; false if the timeout elapses
+// before shutting down you can call a 'drain' method
+// which blocks until all submitted task have been executed
+
+// returns true if drained; false if the timeout elapses
+boundedExecutor.drain(timeout, TimeUnit.SECONDS);
 
 // newly submitted tasks will be rejected after calling 'drain'
 
-underlyingExecutor.shutdownNow(); // safe to call 'shutdownNow' if drained as there should be no active tasks
+// safe to call 'shutdownNow' if drained as there should be no active tasks
+underlyingExecutor.shutdownNow();
 ```
 The source code of the examples can be found [here](src/test/java/com/jano7/executor/Examples.java).
 
@@ -97,6 +101,6 @@ from multiple threads without synchronization.
 <dependency>
   <groupId>com.jano7</groupId>
   <artifactId>executor</artifactId>
-  <version>2.0.0</version>
+  <version>2.0.1</version>
 </dependency>
 ```

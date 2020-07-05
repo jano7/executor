@@ -25,6 +25,9 @@ package com.jano7.executor;
 
 import org.junit.Test;
 
+import java.util.LinkedList;
+import java.util.List;
+
 import static com.jano7.executor.TestUtil.doSomething;
 import static org.junit.Assert.*;
 
@@ -50,27 +53,33 @@ public class TaskQueueTest {
         }
     }
 
+    private volatile List<Runnable> dequeued = null;
+
     @Test(timeout = 5000)
     public void reject() throws InterruptedException {
         TaskQueue taskQueue = new TaskQueue();
-
         Thread rejectTrigger = new Thread(() -> {
             try {
-                Thread.sleep(200);
+                Thread.sleep(500);
             } catch (InterruptedException ignored) {
             }
-            taskQueue.rejectNew(); // TODO test the enqueued tasks
+            dequeued = taskQueue.rejectNew();
         });
         rejectTrigger.start();
 
+        List<Runnable> enqueued = new LinkedList<>();
         while (true) {
-            if (!taskQueue.enqueue(new KeyRunnable<>(Math.random(), doSomething))) {
+            Runnable task = new KeyRunnable<>(Math.random(), doSomething);
+            if (!taskQueue.enqueue(task)) {
                 assertTrue(true);
                 break;
             }
+            enqueued.add(task);
             Thread.sleep(100);
         }
+        rejectTrigger.join();
 
+        assertArrayEquals(enqueued.toArray(), dequeued.toArray());
         assertNull(taskQueue.dequeue());
     }
 }
