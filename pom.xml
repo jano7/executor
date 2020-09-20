@@ -152,7 +152,7 @@
         <connection>scm:git:git://github.com/jano7/executor.git</connection>
         <developerConnection>scm:git:git@github.com:jano7/executor.git</developerConnection>
         <url>https://github.com/jano7/executor</url>
-        <tag>executor-2.0.1</tag>
+        <tag>executor-2.0.2</tag>
     </scm>
 
 </project>

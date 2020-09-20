@@ -33,8 +33,8 @@ import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.jano7.executor.BoundedStrategy.BLOCK;
-import static com.jano7.executor.TestUtil.doSomething;
+import static com.jano7.executor.TestUtils.BoundedExecutor;
+import static com.jano7.executor.TestUtils.doSomething;
 import static org.junit.Assert.*;
 
 public class KeySequentialRunnerTest {
@@ -232,7 +232,7 @@ public class KeySequentialRunnerTest {
     @Test(timeout = 5000)
     public void underLoadWithBoundedExecutor() throws InterruptedException {
         ExecutorService underlyingExecutor = Executors.newFixedThreadPool(10);
-        BoundedExecutor boundedExecutor = new BoundedExecutor(1, BLOCK, underlyingExecutor);
+        BoundedExecutor boundedExecutor = new BoundedExecutor(1, underlyingExecutor);
         KeySequentialRunner<Integer> runner = new KeySequentialRunner<>(boundedExecutor);
         List<Integer> processed = Collections.synchronizedList(new LinkedList<>());
 
@@ -275,9 +275,17 @@ public class KeySequentialRunnerTest {
         List<Integer> completedTasks = Collections.synchronizedList(new LinkedList<>());
         List<Thread> submittingThreads = new LinkedList<>();
         for (int key = 0; key < keys; ++key) {
+            final int taskKey = key;
             for (int i = 0; i < tasksPerKey; ++i) {
+                final int taskId = (taskKey * tasksPerKey) + i;
                 submittingThreads.add(
-                        submittingThread(key, (key * tasksPerKey) + i, submittedTasks, completedTasks, runner)
+                        new Thread(() -> {
+                            try {
+                                runner.run(taskKey, () -> completedTasks.add(taskId));
+                                submittedTasks.add(taskId);
+                            } catch (RejectedExecutionException ignored) {
+                            }
+                        })
                 );
             }
         }
@@ -292,19 +300,5 @@ public class KeySequentialRunnerTest {
         underlyingExecutor.awaitTermination(Long.MAX_VALUE, TimeUnit.SECONDS);
 
         assertTrue(submittedTasks.containsAll(completedTasks) && completedTasks.containsAll(submittedTasks));
-    }
-
-    private Thread submittingThread(int key,
-                                    int taskId,
-                                    List<Integer> submittedTasks,
-                                    List<Integer> completedTasks,
-                                    KeySequentialRunner<Integer> runner) {
-        return new Thread(() -> {
-            try {
-                runner.run(key, () -> completedTasks.add(taskId));
-                submittedTasks.add(taskId);
-            } catch (RejectedExecutionException ignored) {
-            }
-        });
     }
 }

@@ -28,7 +28,7 @@ import org.junit.Test;
 import java.util.LinkedList;
 import java.util.List;
 
-import static com.jano7.executor.TestUtil.doSomething;
+import static com.jano7.executor.TestUtils.doSomething;
 import static org.junit.Assert.*;
 
 public class TaskQueueTest {

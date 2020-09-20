@@ -101,6 +101,6 @@ from multiple threads without synchronization.
 <dependency>
   <groupId>com.jano7</groupId>
   <artifactId>executor</artifactId>
-  <version>2.0.1</version>
+  <version>2.0.2</version>
 </dependency>
 ```
