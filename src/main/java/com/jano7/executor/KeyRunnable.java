@@ -28,7 +28,6 @@ import java.util.Objects;
 public final class KeyRunnable<Key> implements Runnable {
 
     private final Key key;
-
     private final Runnable runnable;
 
     public KeyRunnable(Key key, Runnable runnable) {

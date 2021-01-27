@@ -34,13 +34,9 @@ import static com.jano7.executor.Util.checkNotNull;
 public final class KeySequentialBoundedExecutor implements DrainableExecutor {
 
     private final int maxTasks;
-
     private final Semaphore semaphore;
-
     private final KeySequentialExecutor keySequentialExecutor;
-
     private final Runnable acquire;
-
     private boolean drained = false;
 
     public KeySequentialBoundedExecutor(int maxTasks, BoundedStrategy onTasksExceeded, Executor underlyingExecutor) {
